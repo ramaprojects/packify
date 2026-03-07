@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Packify — Resi</title>
+    <script src="auth-guard.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="app-header">
+        <button class="btn-back" onclick="window.location.href='index.html'">←</button>
+        <h6>Input Resi</h6>
+        <div style="width:36px"></div>
+    </header>
+
+    <div class="page-content">
+
+        <!-- Empty state -->
+        <div id="empty-state" class="empty-state d-none">
+            <div class="empty-icon">🎉</div>
+            <div class="empty-text">Semua sudah ada resi-nya!</div>
+            <div class="empty-sub">Tidak ada antrian yang perlu diproses</div>
+            <button class="btn btn-secondary" style="margin-top:16px;"
+                onclick="window.location.href='index.html'">Kembali ke Dashboard</button>
+        </div>
+
+        <!-- Antrian list -->
+        <div id="queue-list"></div>
+
+    </div>
+
+    <!-- ══ BOTTOM PANEL: Input Resi ══════════════════════════ -->
+    <div class="panel-overlay" id="panel-overlay"></div>
+    <div class="bottom-panel" id="resi-panel">
+        <div class="panel-handle"></div>
+        <div class="panel-header">
+            <div class="panel-title" id="panel-title">Input Resi</div>
+            <button class="btn-close-panel" id="btn-close-panel">✕</button>
+        </div>
+        <div class="panel-body">
+
+            <div style="background:var(--paper);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;">
+                <div style="font-size:12px;color:var(--muted);">Penerima</div>
+                <div style="font-weight:700;font-size:15px;margin-top:2px;" id="panel-penerima">—</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:4px;" id="panel-detail">—</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Nomor Resi</label>
+                <input type="text" class="form-control font-mono" id="input-resi"
+                    placeholder="Masukkan nomor resi..." autocomplete="off"
+                    style="font-size:15px;letter-spacing:0.03em;" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Foto Label Resi</label>
+                <div id="foto-preview-wrap" style="margin-bottom:10px;display:none;">
+                    <img id="foto-preview" src="" alt="Preview"
+                        style="width:100%;max-height:180px;object-fit:contain;
+                               border-radius:var(--radius);border:1px solid var(--border);" />
+                </div>
+                <label class="btn btn-secondary btn-full" style="cursor:pointer;">
+                    📷 Ambil / Pilih Foto
+                    <input type="file" accept="image/*" capture="environment"
+                        id="input-foto-resi" style="display:none;" />
+                </label>
+            </div>
+
+            <button class="btn btn-primary btn-full btn-lg" id="btn-simpan-resi" disabled>
+                Simpan & Selesaikan
+            </button>
+
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loading-text">Mengupload foto resi...</div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <button class="nav-item" data-nav="dashboard">
+            <span class="nav-icon">🏠</span><span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-nav="checklist">
+            <span class="nav-icon">✅</span><span>Checklist</span>
+        </button>
+        <button class="nav-item active" data-nav="resi" style="position:relative;">
+            <span class="nav-icon">🚚</span><span>Resi</span>
+            <span id="resi-badge-nav" class="nav-badge d-none">0</span>
+        </button>
+        <button class="nav-item" data-nav="history">
+            <span class="nav-icon">🕐</span><span>History</span>
+        </button>
+    </nav>
+
+    <script src="app.js"></script>
+    <script>
+    // ── Helpers ───────────────────────────────────────────────
+    function showToast(msg, type = '') {
+        const tc = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.textContent = msg;
+        tc.appendChild(el);
+        setTimeout(() => el.remove(), 3500);
+    }
+
+    function setLoading(show, text = '') {
+        document.getElementById('loading-text').textContent = text;
+        document.getElementById('loading').classList.toggle('show', show);
+    }
+
+    // ── Panel ─────────────────────────────────────────────────
+    const panel        = document.getElementById('resi-panel');
+    const overlay      = document.getElementById('panel-overlay');
+    const btnClose     = document.getElementById('btn-close-panel');
+    const btnSimpan    = document.getElementById('btn-simpan-resi');
+    const inputResi    = document.getElementById('input-resi');
+    const inputFoto    = document.getElementById('input-foto-resi');
+    const fotoWrap     = document.getElementById('foto-preview-wrap');
+    const fotoPreview  = document.getElementById('foto-preview');
+
+    let activeSessionId = null;
+    let fotoFile        = null;
+
+    function openPanel(session) {
+        activeSessionId = getSessionID(session);
+        document.getElementById('panel-penerima').textContent = getPenerima(session);
+        document.getElementById('panel-detail').textContent   =
+            `${getJenis(session)} · ${getPlatform(session)} · ${formatDate(getWaktuDibuat(session))}`;
+        document.getElementById('panel-title').textContent    =
+            `Resi — ${getPenerima(session)}`;
+
+        inputResi.value  = '';
+        fotoFile         = null;
+        fotoWrap.style.display = 'none';
+        fotoPreview.src  = '';
+        btnSimpan.disabled = true;
+
+        panel.classList.add('show');
+        overlay.classList.add('show');
+        setTimeout(() => inputResi.focus(), 300);
+    }
+
+    function closePanel() {
+        panel.classList.remove('show');
+        overlay.classList.remove('show');
+        activeSessionId = null;
+        fotoFile        = null;
+    }
+
+    btnClose.addEventListener('click', closePanel);
+    overlay.addEventListener('click', closePanel);
+
+    // ── Validasi form panel ───────────────────────────────────
+    function validatePanel() {
+        btnSimpan.disabled = !(inputResi.value.trim() && fotoFile);
+    }
+
+    inputResi.addEventListener('input', validatePanel);
+
+    inputFoto.addEventListener('change', e => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        fotoFile = file;
+        const url = URL.createObjectURL(file);
+        fotoPreview.src = url;
+        fotoWrap.style.display = 'block';
+        validatePanel();
+    });
+
+    // ── Simpan Resi ───────────────────────────────────────────
+    btnSimpan.addEventListener('click', async () => {
+        if (!activeSessionId || !fotoFile) return;
+
+        // Snapshot dulu sebelum closePanel() me-reset semuanya ke null
+        const sessionIdSnapshot  = activeSessionId;
+        const fotoFileSnapshot   = fotoFile;
+        const resiNumberSnapshot = inputResi.value.trim();
+
+        closePanel();
+        setLoading(true, 'Mengupload foto resi...');
+
+        try {
+            const allSessions = loadAllSessions();
+            const session     = allSessions.find(s => getSessionID(s) === sessionIdSnapshot);
+            if (!session) throw new Error('Sesi tidak ditemukan (ID: ' + sessionIdSnapshot + ')');
+
+            // Upload foto
+            const { photoUrl } = await uploadPhoto({
+                sessionId:  getSessionID(session),
+                type:       'resi',
+                resiNumber: resiNumberSnapshot,
+                penerima:   getPenerima(session),
+                file:       fotoFileSnapshot,
+            });
+
+            // Update sesi lokal
+            session.resi        = { number: inputResi.value.trim(), photoUrl };
+            session.status      = STATUS.DONE;
+            session.finishedAt  = now();
+
+            const idx = allSessions.findIndex(s => getSessionID(s) === sessionIdSnapshot);
+            if (idx > -1) allSessions[idx] = session;
+            saveAllSessions(allSessions);
+
+            // Sync ke server
+            syncSession(session);
+
+            showToast(`✅ Resi ${getPenerima(session)} berhasil disimpan!`, 'success');
+            renderQueue();
+            updateResiNavBadge();
+
+        } catch (err) {
+            showToast('Gagal: ' + err.message, 'error');
+        } finally {
+            setLoading(false);
+        }
+    });
+
+    // ── Render Antrian ────────────────────────────────────────
+    function renderQueue() {
+        const container = document.getElementById('queue-list');
+        const emptyEl   = document.getElementById('empty-state');
+        const sessions  = loadAllSessions();
+        const queue     = sessions
+            .filter(s => getStatus(s) === STATUS.PENDING_RESI)
+            .sort((a, b) => parseDate(getWaktuDibuat(a)) - parseDate(getWaktuDibuat(b)));
+
+        if (!queue.length) {
+            container.innerHTML = '';
+            emptyEl.classList.remove('d-none');
+            return;
+        }
+
+        emptyEl.classList.add('d-none');
+
+        container.innerHTML = `
+            <div class="section-title" style="margin-bottom:10px;">
+                ${queue.length} sesi menunggu resi
+            </div>
+        ` + queue.map(s => {
+            const id = getSessionID(s);
+            return `
+                <div class="history-item" style="cursor:pointer;" data-id="${id}">
+                    <div style="font-size:28px;flex-shrink:0;">📦</div>
+                    <div class="history-item-info">
+                        <div class="history-item-name">${getPenerima(s)}</div>
+                        <div class="history-item-sub">
+                            ${getJenis(s)} · ${getPlatform(s)} · ${getPetugas(s)}
+                        </div>
+                        <div class="history-item-sub" style="margin-top:2px;">
+                            🕐 ${formatDate(getWaktuDibuat(s))} ${formatTime(getWaktuDibuat(s))}
+                        </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                        <span class="badge badge-orange">Belum Resi</span>
+                        <span class="poin-chip">⭐ ${getPoin(s)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Bind klik
+        container.querySelectorAll('.history-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const id  = el.dataset.id;
+                const ses = loadAllSessions().find(s => getSessionID(s) === id);
+                if (ses) openPanel(ses);
+            });
+        });
+    }
+
+    // ── Fetch antrian dari server (kalau ada) ─────────────────
+    async function fetchServerQueue() {
+        try {
+            const res    = await fetch(`${LINK_GAS}?action=get_queue&key=${API_KEY}`, { redirect: 'follow' });
+            const text   = await res.text();
+            const result = JSON.parse(text);
+            if (result.status !== 'success' || !Array.isArray(result.data)) return;
+
+            const serverSessions = result.data;
+            const local          = loadAllSessions();
+            const localIds       = new Set(local.map(s => getSessionID(s)));
+
+            // Tambahkan sesi server yang belum ada di lokal
+            let added = 0;
+            serverSessions.forEach(ss => {
+                const normalised = normaliseSession(ss);
+                if (!localIds.has(getSessionID(normalised))) {
+                    local.push(normalised);
+                    added++;
+                }
+            });
+            if (added > 0) {
+                saveAllSessions(local);
+                renderQueue();
+                updateResiNavBadge();
+            }
+        } catch (err) {
+            console.warn('Gagal fetch server queue:', err);
+        }
+    }
+
+    // ── Init ──────────────────────────────────────────────────
+    updateResiNavBadge();
+    renderQueue();
+    fetchServerQueue();
+    </script>
+
+</body>
+</html>

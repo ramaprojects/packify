@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Packify — History</title>
+    <script src="auth-guard.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="app-header">
+        <button class="btn-back" onclick="window.location.href='index.html'">←</button>
+        <h6>History</h6>
+        <button id="btn-wa" title="Kirim laporan WhatsApp"
+            style="background:none;border:none;font-size:22px;cursor:pointer;padding:4px;">📤</button>
+    </header>
+
+    <div class="page-content" style="padding-top:8px;">
+
+        <!-- Sync status banner -->
+        <div id="sync-banner" class="d-none"
+            style="background:var(--red-lt);border:1px solid #f5c6cb;border-radius:var(--radius);
+                   padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
+            <span style="font-size:20px;">⚠️</span>
+            <div style="flex:1;">
+                <div style="font-weight:600;font-size:13px;color:var(--red);" id="sync-banner-text">
+                    Beberapa sesi gagal sync
+                </div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+                    Data tersimpan lokal, belum masuk ke sheet
+                </div>
+            </div>
+            <button class="btn btn-sm" id="btn-retry-sync"
+                style="background:var(--red);color:#fff;flex-shrink:0;white-space:nowrap;">
+                Retry
+            </button>
+        </div>
+
+        <!-- Search & Filter -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <input type="text" class="form-control" id="input-search"
+                placeholder="🔍  Cari penerima atau resi..." style="flex:1;" />
+            <select class="form-select" id="filter-status" style="width:auto;flex-shrink:0;">
+                <option value="">Semua</option>
+                <option value="PENDING_RESI">Belum Resi</option>
+                <option value="DONE">Selesai</option>
+            </select>
+        </div>
+
+        <!-- List -->
+        <div id="history-list"></div>
+
+    </div>
+
+    <!-- ══ MODAL: Detail Sesi ════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-body">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                    <div style="font-size:18px;font-weight:700;" id="modal-penerima">—</div>
+                    <span class="badge" id="modal-status-badge">—</span>
+                </div>
+
+                <!-- Info grid -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+                    <div style="background:var(--paper);border-radius:var(--radius-sm);padding:10px;">
+                        <div style="font-size:11px;color:var(--muted);">Jenis</div>
+                        <div style="font-weight:600;font-size:13px;" id="modal-jenis">—</div>
+                    </div>
+                    <div style="background:var(--paper);border-radius:var(--radius-sm);padding:10px;">
+                        <div style="font-size:11px;color:var(--muted);">Platform</div>
+                        <div style="font-weight:600;font-size:13px;" id="modal-platform">—</div>
+                    </div>
+                    <div style="background:var(--paper);border-radius:var(--radius-sm);padding:10px;">
+                        <div style="font-size:11px;color:var(--muted);">Operator</div>
+                        <div style="font-weight:600;font-size:13px;" id="modal-operator">—</div>
+                    </div>
+                    <div style="background:var(--paper);border-radius:var(--radius-sm);padding:10px;">
+                        <div style="font-size:11px;color:var(--muted);">Poin</div>
+                        <div style="font-weight:600;font-size:13px;" id="modal-poin">—</div>
+                    </div>
+                </div>
+
+                <!-- Nomor Resi -->
+                <div style="margin-bottom:12px;" id="modal-resi-wrap">
+                    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Nomor Resi</div>
+                    <div class="font-mono" style="font-size:14px;font-weight:500;
+                        background:var(--paper);padding:10px 12px;border-radius:var(--radius-sm);"
+                        id="modal-resi-number">—</div>
+                </div>
+
+                <!-- Foto Resi -->
+                <div id="modal-foto-resi-wrap" style="margin-bottom:12px;display:none;">
+                    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Foto Resi</div>
+                    <img id="modal-foto-resi" src="" alt="Foto Resi"
+                        style="width:100%;max-height:200px;object-fit:contain;
+                               border-radius:var(--radius);border:1px solid var(--border);"
+                        onerror="this.style.display='none'" />
+                </div>
+
+                <!-- Foto Checklist -->
+                <div id="modal-checklist-wrap" style="display:none;">
+                    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Foto Checklist</div>
+                    <div id="modal-checklist-photos"
+                        style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;"></div>
+                </div>
+
+                <div style="font-size:11px;color:var(--muted);margin-top:12px;" id="modal-time">—</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-modal-close">Tutup</button>
+                <button class="btn btn-danger" id="btn-modal-delete">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <button class="nav-item" data-nav="dashboard">
+            <span class="nav-icon">🏠</span><span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-nav="checklist">
+            <span class="nav-icon">✅</span><span>Checklist</span>
+        </button>
+        <button class="nav-item" data-nav="resi" style="position:relative;">
+            <span class="nav-icon">🚚</span><span>Resi</span>
+            <span id="resi-badge-nav" class="nav-badge d-none">0</span>
+        </button>
+        <button class="nav-item active" data-nav="history">
+            <span class="nav-icon">🕐</span><span>History</span>
+        </button>
+    </nav>
+
+    <script src="app.js"></script>
+    <script>
+    // ── Helpers ───────────────────────────────────────────────
+    function showToast(msg, type = '') {
+        const tc = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.textContent = msg;
+        tc.appendChild(el);
+        setTimeout(() => el.remove(), 3500);
+    }
+
+    // ── State ─────────────────────────────────────────────────
+    let allSessions  = [];
+    let activeSession = null;
+
+    // ── Toggle Group ──────────────────────────────────────────
+    function toggleGroup(date) {
+        const group  = document.querySelector(`.date-group[data-date="${date}"]`);
+        const header = group.querySelector('.date-group-header');
+        const body   = group.querySelector('.date-group-body');
+        const chev   = group.querySelector('.date-group-chevron');
+        const isOpen = header.classList.contains('open');
+
+        if (isOpen) {
+            body.style.display  = 'none';
+            chev.textContent    = '▼';
+            header.classList.remove('open');
+        } else {
+            body.style.display  = 'block';
+            chev.textContent    = '▲';
+            header.classList.add('open');
+        }
+    }
+
+    // ── Render List ───────────────────────────────────────────
+    function renderList() {
+        const container   = document.getElementById('history-list');
+        const searchQ     = document.getElementById('input-search').value.toLowerCase().trim();
+        const filterStatus = document.getElementById('filter-status').value;
+
+        let sessions = [...allSessions]
+            .filter(s => getStatus(s) !== 'DRAFT') // DRAFT tidak ditampilkan
+            .sort((a, b) => parseDate(getWaktuDibuat(b)) - parseDate(getWaktuDibuat(a)));
+
+        // Filter
+        if (searchQ) {
+            sessions = sessions.filter(s =>
+                String(getPenerima(s) || '').toLowerCase().includes(searchQ) ||
+                String(getNomorResi(s) || '').toLowerCase().includes(searchQ)
+            );
+        }
+        if (filterStatus) {
+            sessions = sessions.filter(s => getStatus(s) === filterStatus);
+        }
+
+        if (!sessions.length) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📭</div>
+                    <div class="empty-text">Tidak ada sesi</div>
+                    <div class="empty-sub">Coba ubah filter atau mulai sesi baru</div>
+                </div>`;
+            return;
+        }
+
+        // Group by tanggal
+        const groups = {};
+        sessions.forEach(s => {
+            const raw = getWaktuDibuat(s) || ''; const key = (raw.split('T')[0] || raw.split(' ')[0] || 'unknown').split(' ')[0];
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(s);
+        });
+
+        const today = getTodayKey();
+
+        container.innerHTML = Object.entries(groups).map(([date, items]) => {
+            const label      = date === today ? 'Hari Ini'
+                : date === getPrevDayKey(today) ? 'Kemarin'
+                : formatDate(date + 'T00:00:00');
+            // Hari ini otomatis terbuka, sisanya collapsed
+            const isOpen     = date === today;
+            const totalPoin  = items.reduce((sum, s) => sum + (getPoin(s) || 0), 0);
+            const doneCount  = items.filter(s => ['DONE','SYNCED'].includes(getStatus(s))).length;
+
+            return `
+                <div class="date-group" data-date="${date}">
+                    <div class="date-group-header ${isOpen ? 'open' : ''}" onclick="toggleGroup('${date}')">
+                        <div style="flex:1;">
+                            <span class="date-group-label" style="padding:0;margin:0;">${label}</span>
+                            <span style="font-size:11px;color:var(--muted);margin-left:8px;">
+                                ${items.length} sesi · ✅ ${doneCount} · ⭐ ${totalPoin}
+                            </span>
+                        </div>
+                        <span class="date-group-chevron">${isOpen ? '▲' : '▼'}</span>
+                    </div>
+                    <div class="date-group-body" style="display:${isOpen ? 'block' : 'none'};">
+                        ${items.map(s => {
+                            const badge = getStatusBadge(getStatus(s));
+                            const id    = getSessionID(s);
+                            return `
+                                <div class="history-item" data-id="${id}" style="cursor:pointer;margin-bottom:6px;">
+                                    <div style="font-size:22px;flex-shrink:0;">
+                                        ${['DONE','SYNCED'].includes(getStatus(s)) ? '✅' : '📦'}
+                                    </div>
+                                    <div class="history-item-info">
+                                        <div class="history-item-name">${getPenerima(s)}</div>
+                                        <div class="history-item-sub">
+                                            ${getJenis(s)} · ${getPlatform(s)} · ${getPetugas(s)}
+                                            · 🕐 ${formatTime(getWaktuDibuat(s))}
+                                        </div>
+                                    </div>
+                                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+                                        <span class="badge ${badge.cls}">${badge.label}</span>
+                                        <span class="poin-chip">⭐ ${getPoin(s)}</span>
+                                        ${s.syncStatus === 'FAILED'
+                                            ? `<span class="badge badge-red" style="font-size:10px;">⚠️ Gagal sync</span>`
+                                            : ''}
+                                    </div>
+                                </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Bind klik
+        container.querySelectorAll('.history-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const id = el.dataset.id;
+                const s  = allSessions.find(x => getSessionID(x) === id);
+                if (s) openModal(s);
+            });
+        });
+    }
+
+    // ── Modal ─────────────────────────────────────────────────
+    function openModal(session) {
+        activeSession = session;
+        const modalOverlay = document.getElementById('modal-overlay');
+
+        const badge = getStatusBadge(getStatus(session));
+        document.getElementById('modal-penerima').textContent     = getPenerima(session);
+        document.getElementById('modal-status-badge').textContent = badge.label;
+        document.getElementById('modal-status-badge').className   = `badge ${badge.cls}`;
+        document.getElementById('modal-jenis').textContent        = getJenis(session);
+        document.getElementById('modal-platform').textContent     = getPlatform(session);
+        document.getElementById('modal-operator').textContent     = getPetugas(session);
+        document.getElementById('modal-poin').textContent         = `⭐ ${getPoin(session)} poin`;
+        document.getElementById('modal-resi-number').textContent  = getNomorResi(session);
+
+        const waktuDibuat  = getWaktuDibuat(session);
+        const waktuSelesai = getWaktuSelesai(session);
+        document.getElementById('modal-time').textContent =
+            `Dibuat: ${formatDate(waktuDibuat)} ${formatTime(waktuDibuat)}` +
+            (waktuSelesai ? ` · Selesai: ${formatTime(waktuSelesai)}` : '');
+
+        // Foto resi
+        const fotoUrl = getFotoResi(session);
+        const fotoWrap = document.getElementById('modal-foto-resi-wrap');
+        if (fotoUrl) {
+            document.getElementById('modal-foto-resi').src = toDriveDirectUrl(fotoUrl);
+            fotoWrap.style.display = 'block';
+        } else {
+            fotoWrap.style.display = 'none';
+        }
+
+        // Foto checklist
+        const checklist = getChecklist(session);
+        const ckWrap    = document.getElementById('modal-checklist-wrap');
+        const ckPhotos  = document.getElementById('modal-checklist-photos');
+        const ckWithPhotos = checklist.filter(i => i.photoId || i.photoPreview);
+        if (ckWithPhotos.length) {
+            ckPhotos.innerHTML = ckWithPhotos.map(i => {
+                const url = toDriveDirectUrl(i.photoId || i.photoPreview);
+                return `
+                    <div style="position:relative;">
+                        <img src="${url}" alt="${i.label}"
+                            style="width:100%;aspect-ratio:1;object-fit:cover;
+                                   border-radius:var(--radius-sm);border:1px solid var(--border);"
+                            onerror="this.parentElement.style.display='none'" />
+                        <div style="position:absolute;bottom:0;left:0;right:0;
+                            background:rgba(0,0,0,0.55);color:#fff;font-size:9px;
+                            padding:3px 5px;border-radius:0 0 var(--radius-sm) var(--radius-sm);
+                            text-align:center;font-weight:600;">${i.label}</div>
+                    </div>`;
+            }).join('');
+            ckWrap.style.display = 'block';
+        } else {
+            ckWrap.style.display = 'none';
+        }
+
+        modalOverlay.classList.add('show');
+    }
+
+    function closeModal() {
+        document.getElementById('modal-overlay').classList.remove('show');
+        activeSession = null;
+    }
+
+    document.getElementById('btn-modal-close').addEventListener('click', closeModal);
+    document.getElementById('modal-overlay').addEventListener('click', e => {
+        if (e.target === document.getElementById('modal-overlay')) closeModal();
+    });
+
+    // ── Delete ────────────────────────────────────────────────
+    document.getElementById('btn-modal-delete').addEventListener('click', () => {
+        if (!activeSession) return;
+        const id = getSessionID(activeSession);
+        if (!confirm(`Hapus sesi ${getPenerima(activeSession)}?`)) return;
+
+        allSessions = allSessions.filter(s => getSessionID(s) !== id);
+        saveAllSessions(allSessions);
+        closeModal();
+        renderList();
+        updateResiNavBadge();
+        showToast('Sesi dihapus', '');
+    });
+
+    // ── WhatsApp Report ───────────────────────────────────────
+    document.getElementById('btn-wa').addEventListener('click', () => {
+        const today      = getTodayKey();
+        const todayStart = new Date(today + 'T00:00:00');
+
+        const done = allSessions.filter(s => {
+            const fin = getWaktuSelesai(s);
+            return ['DONE','SYNCED'].includes(getStatus(s)) && fin && (parseDate(fin) || 0) >= todayStart;
+        });
+
+        const pending = allSessions.filter(s => getStatus(s) === STATUS.PENDING_RESI);
+
+        const totalPoin = done.reduce((sum, s) => sum + (getPoin(s) || 0), 0);
+
+        const lines = [
+            `📦 *Laporan Packing — ${formatDate(today + 'T00:00:00')}*`,
+            ``,
+            `✅ Selesai hari ini: *${done.length} sesi* (${totalPoin} poin)`,
+            `⏳ Menunggu resi: *${pending.length} sesi*`,
+            ``,
+        ];
+
+        if (done.length) {
+            lines.push(`*Detail Selesai:*`);
+            done.forEach((s, i) => {
+                lines.push(`${i+1}. ${getPenerima(s)} — ${getJenis(s)} (${getPetugas(s)})`);
+            });
+            lines.push('');
+        }
+
+        if (pending.length) {
+            lines.push(`*Belum Ada Resi:*`);
+            pending.forEach((s, i) => {
+                lines.push(`${i+1}. ${getPenerima(s)} — ${getJenis(s)}`);
+            });
+        }
+
+        const msg = encodeURIComponent(lines.join('\n'));
+        window.open(`https://wa.me/?text=${msg}`, '_blank');
+    });
+
+    // ── Filter & Search ───────────────────────────────────────
+    document.getElementById('input-search').addEventListener('input', renderList);
+    document.getElementById('filter-status').addEventListener('change', renderList);
+
+    // ── Fetch dari server ─────────────────────────────────────
+    async function fetchFromServer() {
+        try {
+            const res    = await fetch(`${LINK_GAS}?action=get_all&key=${API_KEY}`, { redirect: 'follow' });
+            const text   = await res.text();
+            const result = JSON.parse(text);
+            if (result.status !== 'success' || !Array.isArray(result.data)) return;
+
+            const serverData = result.data;
+            const local      = loadAllSessions();
+            const localIds   = new Set(local.map(s => getSessionID(s)));
+
+            let merged = [...local];
+            serverData.forEach(ss => {
+                const normalised = normaliseSession(ss);
+                const id  = getSessionID(normalised);
+                const idx = merged.findIndex(s => getSessionID(s) === id);
+                if (idx > -1) {
+                    if (['DONE','SYNCED'].includes(getStatus(normalised))) {
+                        merged[idx] = { ...merged[idx], ...normalised };
+                    }
+                } else {
+                    merged.push(normalised);
+                }
+            });
+
+            saveAllSessions(merged);
+            allSessions = merged;
+            renderList();
+            updateResiNavBadge();
+        } catch (err) {
+            console.warn('Gagal fetch server history:', err);
+        }
+    }
+
+    // ── Sync banner ───────────────────────────────────────────
+    function updateSyncBanner() {
+        const failed = getSyncFailedCount();
+        const banner = document.getElementById('sync-banner');
+        if (failed > 0) {
+            document.getElementById('sync-banner-text').textContent =
+                `${failed} sesi gagal sync ke sheet`;
+            banner.style.display = 'flex';
+            banner.classList.remove('d-none');
+        } else {
+            banner.style.display = 'none';
+        }
+    }
+
+    document.getElementById('btn-retry-sync').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-retry-sync');
+        btn.disabled    = true;
+        btn.textContent = 'Mencoba...';
+
+        const { success, failed } = await retrySyncQueue(id => {
+            btn.textContent = `Sync...`;
+        });
+
+        btn.disabled    = false;
+        btn.textContent = 'Retry';
+
+        if (success > 0) showToast(`✅ ${success} sesi berhasil di-sync`, 'success');
+        if (failed  > 0) showToast(`⚠️ ${failed} sesi masih gagal`, 'error');
+
+        allSessions = loadAllSessions();
+        renderList();
+        updateSyncBanner();
+    });
+
+    // ── Init ──────────────────────────────────────────────────
+    allSessions = loadAllSessions();
+    updateResiNavBadge();
+    updateSyncBanner();
+    renderList();
+    fetchFromServer();
+    </script>
+
+</body>
+</html>

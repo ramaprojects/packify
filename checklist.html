@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Packify — Checklist</title>
+    <script src="auth-guard.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ══ FASE 1: STEP-BY-STEP INPUT ══════════════════════════ -->
+    <div id="phase-input">
+        <header class="app-header">
+            <button class="btn-back" id="btn-back-step">←</button>
+            <h6 id="step-title">Nama Penerima</h6>
+            <div style="width:36px"></div>
+        </header>
+
+        <!-- Progress dots -->
+        <div style="display:flex;justify-content:center;gap:6px;padding:12px 0 0;">
+            <div class="step-dot active" id="dot-1"></div>
+            <div class="step-dot" id="dot-2"></div>
+            <div class="step-dot" id="dot-3"></div>
+        </div>
+
+        <!-- Step 1: Nama Penerima -->
+        <div class="step-panel" id="step-1">
+            <div class="page-content" style="padding-top:20px;">
+                <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+                    Cari dan pilih nama penerima paket
+                </p>
+                <div class="form-group">
+                    <div id="penerima-wrapper">
+                        <input type="text" class="form-control" id="input-penerima-search"
+                            placeholder="Cari penerima..." autocomplete="off"
+                            style="font-size:16px;padding:14px;" />
+                        <input type="hidden" id="input-penerima" value="" />
+                    </div>
+                </div>
+
+                <!-- Operator -->
+                <div class="form-group" style="margin-top:8px;">
+                    <label class="form-label">PIC Packing</label>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                        <button class="operator-btn" data-name="ram">ram</button>
+                        <button class="operator-btn" data-name="nab">nab</button>
+                        <button class="operator-btn" data-name="wul">wul</button>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-full btn-lg" id="btn-step1-next" disabled
+                    style="margin-top:8px;">
+                    Lanjut →
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2: Platform -->
+        <div class="step-panel d-none" id="step-2">
+            <div class="page-content" style="padding-top:20px;">
+                <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+                    Pilih platform pembelian
+                </p>
+                <div class="preset-grid" id="platform-grid">
+                    <button class="preset-card" data-value="Aplikasi">
+                        <span class="preset-icon">📱</span>
+                        <span class="preset-label">Aplikasi</span>
+                    </button>
+                    <button class="preset-card" data-value="TikTok">
+                        <span class="preset-icon">🎵</span>
+                        <span class="preset-label">TikTok</span>
+                    </button>
+                    <button class="preset-card" data-value="Shopee">
+                        <span class="preset-icon">🛍️</span>
+                        <span class="preset-label">Shopee</span>
+                    </button>
+                    <button class="preset-card" data-value="Retur">
+                        <span class="preset-icon">🔄</span>
+                        <span class="preset-label">Retur</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Jenis Barang -->
+        <div class="step-panel d-none" id="step-3">
+            <div class="page-content" style="padding-top:20px;">
+                <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+                    Pilih jenis barang
+                </p>
+                <div class="preset-grid" id="jenis-grid"></div>
+            </div>
+        </div>
+
+        <!-- Hidden inputs untuk kompatibilitas dengan logic lama -->
+        <input type="hidden" id="input-platform" />
+        <input type="hidden" id="input-jenis" />
+        <input type="hidden" id="input-operator" />
+    </div>
+
+    <!-- ══ FASE 2: CHECKLIST FOTO ══════════════════════════════ -->
+    <div id="phase-checklist" class="d-none">
+        <header class="app-header">
+            <button class="btn-back" id="btn-back-checklist">←</button>
+            <h6>Checklist Foto</h6>
+            <div style="width:36px"></div>
+        </header>
+
+        <div class="page-content">
+
+            <!-- Info sesi -->
+            <div class="card" style="margin-bottom:16px;">
+                <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                    <div>
+                        <div style="font-weight:700;font-size:15px;" id="ck-penerima">—</div>
+                        <div style="font-size:12px;color:var(--muted);" id="ck-detail">—</div>
+                    </div>
+                    <span class="poin-chip" id="ck-poin">⭐ 0 poin</span>
+                </div>
+                <!-- Progress -->
+                <div style="padding:0 16px 14px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span style="font-size:12px;color:var(--muted);">Progress foto</span>
+                        <span style="font-size:12px;font-weight:600;" id="ck-progress-text">0 / 0</span>
+                    </div>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar-fill" id="ck-progress-bar" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- List checklist item -->
+            <div id="checklist-items"></div>
+
+            <button class="btn btn-primary btn-full btn-lg" id="btn-submit" disabled
+                style="margin-top:8px;">
+                Selesai & Simpan
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loading-text">Mengupload foto...</div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Bottom nav (fase 1 saja) -->
+    <nav class="bottom-nav" id="bottom-nav">
+        <button class="nav-item" data-nav="dashboard">
+            <span class="nav-icon">🏠</span><span>Dashboard</span>
+        </button>
+        <button class="nav-item active" data-nav="checklist">
+            <span class="nav-icon">✅</span><span>Checklist</span>
+        </button>
+        <button class="nav-item" data-nav="resi" style="position:relative;">
+            <span class="nav-icon">🚚</span><span>Resi</span>
+            <span id="resi-badge-nav" class="nav-badge d-none">0</span>
+        </button>
+        <button class="nav-item" data-nav="history">
+            <span class="nav-icon">🕐</span><span>History</span>
+        </button>
+    </nav>
+
+    <script src="app.js"></script>
+    <script>
+    // ── Helpers ────────────────────────────────────────────────
+    function showToast(msg, type = '') {
+        const tc = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.textContent = msg;
+        tc.appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+    }
+
+    function setLoading(show, text = 'Mengupload foto...') {
+        const ov = document.getElementById('loading');
+        document.getElementById('loading-text').textContent = text;
+        ov.classList.toggle('show', show);
+    }
+
+    // ── Fase 1: Step-by-step Input ────────────────────────────
+    const inputPlatform  = document.getElementById('input-platform');
+    const inputJenis     = document.getElementById('input-jenis');
+    const inputOperator  = document.getElementById('input-operator');
+    const hiddenPenerima = document.getElementById('input-penerima');
+
+    // State
+    let selectedOperator = getOperator() || '';
+
+    // ── Step navigation ──────────────────────────────────────
+    let currentStep = 1;
+
+    const STEPS = {
+        1: { el: 'step-1', title: 'Nama Penerima',  dot: 'dot-1' },
+        2: { el: 'step-2', title: 'Platform',        dot: 'dot-2' },
+        3: { el: 'step-3', title: 'Jenis Barang',    dot: 'dot-3' },
+    };
+
+    function goToStep(n) {
+        // Sembunyikan semua step
+        Object.values(STEPS).forEach(s => {
+            document.getElementById(s.el).classList.add('d-none');
+            document.getElementById(s.dot).classList.remove('active');
+        });
+        // Tampilkan step yang dituju
+        document.getElementById(STEPS[n].el).classList.remove('d-none');
+        document.getElementById(STEPS[n].dot).classList.add('active');
+        document.getElementById('step-title').textContent = STEPS[n].title;
+        currentStep = n;
+    }
+
+    // Tombol back di header — kembali ke step sebelumnya atau ke index
+    document.getElementById('btn-back-step').addEventListener('click', () => {
+        if (currentStep > 1) goToStep(currentStep - 1);
+        else window.location.href = 'index.html';
+    });
+
+    // ── Step 1: Operator picker ──────────────────────────────
+    const operatorBtns = document.querySelectorAll('.operator-btn');
+    operatorBtns.forEach(btn => {
+        if (btn.dataset.name === selectedOperator) btn.classList.add('selected');
+        btn.addEventListener('click', () => {
+            operatorBtns.forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedOperator = btn.dataset.name;
+            inputOperator.value = selectedOperator;
+            validateStep1();
+        });
+    });
+    if (selectedOperator) inputOperator.value = selectedOperator;
+
+    function validateStep1() {
+        const ok = hiddenPenerima.value && selectedOperator;
+        document.getElementById('btn-step1-next').disabled = !ok;
+    }
+
+    hiddenPenerima.addEventListener('change', validateStep1);
+
+    document.getElementById('btn-step1-next').addEventListener('click', () => {
+        goToStep(2);
+    });
+
+    // ── Step 2: Platform cards ───────────────────────────────
+    const JENIS_BY_PLATFORM = {
+        Aplikasi: ['T1','T3','M3'],
+        TikTok:   ['T1','T3','M3','Thermal','Kaos'],
+        Shopee:   ['T1','T3','M3','Thermal','Kaos'],
+        Retur:    ['ARRANET','USER','ARAHNETS','MPN'],
+    };
+
+    const JENIS_ICON = {
+        T1: '📦', T3: '📦', M3: '📦',
+        ARRANET: '🔄', USER: '👤', ARAHNETS: '🔄', MPN: '🏷️',
+        Thermal: '🧾', Kaos: '👕',
+    };
+
+    document.querySelectorAll('#platform-grid .preset-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const val = card.dataset.value;
+            inputPlatform.value = val;
+
+            // Render jenis grid sesuai platform
+            const jenisGrid = document.getElementById('jenis-grid');
+            const options   = JENIS_BY_PLATFORM[val] || [];
+            jenisGrid.innerHTML = options.map(j => `
+                <button class="preset-card" data-value="${j}">
+                    <span class="preset-icon">${JENIS_ICON[j] || '📦'}</span>
+                    <span class="preset-label">${j}</span>
+                </button>
+            `).join('');
+
+            // Bind event ke jenis cards
+            jenisGrid.querySelectorAll('.preset-card').forEach(jcard => {
+                jcard.addEventListener('click', () => {
+                    const jval = jcard.dataset.value;
+                    inputJenis.value = jval;
+                    // Langsung buat sesi dan mulai checklist
+                    startSession();
+                });
+            });
+
+            goToStep(3);
+        });
+    });
+
+    // ── Start Session ────────────────────────────────────────
+    function startSession() {
+        const shipping = {
+            penerima: hiddenPenerima.value,
+            platform: inputPlatform.value,
+            jenis:    inputJenis.value,
+            petugas:  inputOperator.value || selectedOperator,
+        };
+        const session = createSession(shipping);
+        saveCurrentSession(session);
+        persistSession();
+        renderChecklist(session);
+    }
+
+    // Init penerima search
+    initPenerimaSearch();
+    updateResiNavBadge();
+    validateStep1();
+
+    // ── Fase 2: Checklist ──────────────────────────────────────
+    let currentSession = null;
+
+    function renderChecklist(session) {
+        currentSession = session;
+
+        // Sembunyikan fase 1
+        document.getElementById('phase-input').classList.add('d-none');
+        document.getElementById('bottom-nav').classList.add('d-none');
+        document.getElementById('phase-checklist').classList.remove('d-none');
+
+        // Header info
+        document.getElementById('ck-penerima').textContent = session.shipping.penerima;
+        document.getElementById('ck-detail').textContent   =
+            `${session.shipping.jenis} · ${session.shipping.platform} · ${session.shipping.petugas}`;
+        document.getElementById('ck-poin').textContent = `⭐ ${session.poin} poin`;
+
+        // Generate checklist items
+        const items = generateChecklist(session.shipping.jenis);
+        updateSession(s => { s.checklist = items; });
+        currentSession.checklist = items;
+
+        renderChecklistItems();
+        updateProgress();
+    }
+
+    function renderChecklistItems() {
+        const container = document.getElementById('checklist-items');
+        const items     = currentSession.checklist;
+
+        container.innerHTML = items.map((item, idx) => {
+            const hasPending  = !!pendingFiles[idx];
+            const isDone      = !!item.photoId;
+            const isFailed    = item.uploadFailed;
+            const stateClass  = isDone || hasPending ? 'done' : isFailed ? 'failed' : '';
+            const subText     = isDone      ? 'Foto terupload ✓'
+                              : hasPending  ? 'Siap diupload'
+                              : isFailed    ? 'Gagal upload — tap untuk retry'
+                              : 'Belum difoto';
+
+            return `
+            <div class="checklist-item ${stateClass}" id="ci-${idx}">
+                <div class="checklist-item-info">
+                    <div class="label">${item.label}</div>
+                    <div class="sub ${isFailed ? 'text-danger' : ''}">${subText}</div>
+                </div>
+                ${item.photoPreview
+                    ? `<img class="checklist-thumb" src="${item.photoPreview}" alt="${item.label}" />`
+                    : `<div class="checklist-thumb" style="background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:20px;">📷</div>`
+                }
+                <label class="btn-photo ${isDone ? 'done' : isFailed ? 'failed' : ''}" title="${isFailed ? 'Retry foto' : 'Ambil foto'}">
+                    ${isDone ? '✓' : isFailed ? '🔄' : '📷'}
+                    <input type="file" accept="image/*" capture="environment"
+                        style="display:none" data-idx="${idx}" class="photo-input" />
+                </label>
+            </div>`;
+        }).join('');
+
+        // Bind file input events
+        container.querySelectorAll('.photo-input').forEach(input => {
+            input.addEventListener('change', onPhotoSelected);
+        });
+    }
+
+    // Simpan file lokal sementara untuk upload massal nanti
+    const pendingFiles = {}; // idx → File
+
+    function onPhotoSelected(e) {
+        const file = e.target.files?.[0];
+        const idx  = parseInt(e.target.dataset.idx);
+        if (!file || isNaN(idx)) return;
+
+        const item = currentSession.checklist[idx];
+
+        // Simpan file untuk upload massal nanti
+        pendingFiles[idx] = file;
+
+        // Preview lokal saja
+        item.photoPreview = URL.createObjectURL(file);
+        item.hasPending   = true;
+
+        updateSession(s => { s.checklist = currentSession.checklist; });
+        renderChecklistItems();
+        updateProgress();
+
+        // Animasi feedback — item yang baru difoto "bounce"
+        const itemEl = document.getElementById(`ci-${idx}`);
+        if (itemEl) {
+            itemEl.classList.add('photo-taken');
+            setTimeout(() => itemEl.classList.remove('photo-taken'), 500);
+        }
+
+        // Haptic feedback kalau tersedia
+        if (navigator.vibrate) navigator.vibrate(40);
+    }
+
+    function updateProgress() {
+        const items   = currentSession.checklist;
+        const done    = items.filter(i => i.photoId || i.hasPending).length;
+        const total   = items.length;
+        const pct     = total ? Math.round(done / total * 100) : 0;
+
+        document.getElementById('ck-progress-text').textContent = `${done} / ${total}`;
+        document.getElementById('ck-progress-bar').style.width  = `${pct}%`;
+
+        // Tombol aktif kalau ada minimal 1 foto (pending atau uploaded)
+        const hasAny = done > 0;
+        document.getElementById('btn-submit').disabled = !hasAny;
+
+        // Label tombol sesuai kondisi
+        const btnSubmit = document.getElementById('btn-submit');
+        if (done < total) {
+            btnSubmit.textContent = `Selesai & Simpan (${done}/${total} foto)`;
+        } else {
+            btnSubmit.textContent = `Selesai & Simpan ✓`;
+        }
+    }
+
+    document.getElementById('btn-back-checklist').addEventListener('click', () => {
+        if (confirm('Batalkan sesi ini?')) {
+            clearCurrentSession();
+            window.location.reload();
+        }
+    });
+
+    document.getElementById('btn-submit').addEventListener('click', async () => {
+        const items       = currentSession.checklist;
+        const pending     = Object.keys(pendingFiles);
+        const totalUpload = pending.length;
+
+        // Upload massal semua foto yang belum terupload
+        if (totalUpload > 0) {
+            setLoading(true, `Mengupload foto 1 / ${totalUpload}...`);
+            let uploaded = 0;
+            let failed   = 0;
+
+            for (const idxStr of pending) {
+                const idx  = parseInt(idxStr);
+                const item = items[idx];
+                const file = pendingFiles[idx];
+
+                try {
+                    document.getElementById('loading-text').textContent =
+                        `Mengupload foto ${++uploaded} / ${totalUpload} — ${item.label}`;
+
+                    const { photoUrl } = await uploadPhoto({
+                        sessionId: currentSession.sessionId,
+                        type:      'checklist',
+                        item:      item.label,
+                        penerima:  currentSession.shipping.penerima,
+                        file,
+                    });
+
+                    item.photoId      = photoUrl;
+                    item.photoPreview = photoUrl;
+                    item.hasPending   = false;
+                    delete pendingFiles[idx];
+
+                } catch (err) {
+                    failed++;
+                    item.hasPending   = false;
+                    item.uploadFailed = true;
+                    // Jangan hapus pendingFiles[idx] — bisa di-retry
+                    console.error(`Gagal upload ${item.label}:`, err);
+                }
+            }
+
+            updateSession(s => { s.checklist = currentSession.checklist; });
+            renderChecklistItems();
+
+            updateSession(s => { s.checklist = currentSession.checklist; });
+            renderChecklistItems();
+
+            if (failed > 0) {
+                showToast(`⚠️ ${failed} foto gagal — tap 🔄 untuk retry`, 'error');
+                // Jangan lanjut simpan kalau masih ada yang gagal — beri kesempatan retry
+                setLoading(false);
+                return;
+            }
+        }
+
+        // Simpan sesi
+        setLoading(true, 'Menyimpan sesi...');
+        try {
+            updateSession(s => {
+                s.status     = STATUS.PENDING_RESI;
+                s.finishedAt = now();
+            });
+            persistSession();
+
+            // Update streak
+            updateStreakLocal(getOperator());
+
+            // Sync ke server di background
+            syncSession(loadCurrentSession());
+
+            clearCurrentSession();
+            showToast(`✅ Sesi tersimpan! +${currentSession.poin} poin`, 'success');
+
+            setTimeout(() => window.location.href = 'resi.html', 1200);
+        } catch (err) {
+            showToast('Gagal menyimpan: ' + err.message, 'error');
+        } finally {
+            setLoading(false);
+        }
+    });
+
+    // Restore sesi yang sedang berjalan (kalau ada)
+    const existingSession = loadCurrentSession();
+    if (existingSession && existingSession.checklist?.length > 0) {
+        renderChecklist(existingSession);
+    }
+    </script>
+
+</body>
+</html>
