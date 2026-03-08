@@ -260,7 +260,9 @@
 
         try {
             codeReader = new ZXing.BrowserMultiFormatReader();
-            const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+
+            // Di versi 0.19.x, listVideoInputDevices ada di instance, bukan static
+            const devices = await codeReader.listVideoInputDevices();
             // Pilih kamera belakang kalau ada
             const backCam = devices.find(d =>
                 /back|rear|environment/i.test(d.label)
