@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <!-- ZXing barcode scanner -->
+    <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 </head>
 <body>
 
@@ -51,9 +53,50 @@
 
             <div class="form-group">
                 <label class="form-label">Nomor Resi</label>
-                <input type="text" class="form-control font-mono" id="input-resi"
-                    placeholder="Masukkan nomor resi..." autocomplete="off"
-                    style="font-size:15px;letter-spacing:0.03em;" />
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="text" class="form-control font-mono" id="input-resi"
+                        placeholder="Masukkan atau scan resi..." autocomplete="off"
+                        style="font-size:15px;letter-spacing:0.03em;flex:1;" />
+                    <button class="btn btn-secondary" id="btn-scan-resi"
+                        style="flex-shrink:0;padding:10px 14px;font-size:18px;" title="Scan Barcode">
+                        📷
+                    </button>
+                </div>
+                <!-- Scanner viewfinder -->
+                <div id="scan-wrap" style="display:none;margin-top:10px;position:relative;
+                     border-radius:var(--radius);overflow:hidden;background:#000;">
+                    <video id="scan-video" style="width:100%;display:block;max-height:220px;
+                           object-fit:cover;"></video>
+                    <!-- Crosshair overlay -->
+                    <div style="position:absolute;inset:0;display:flex;align-items:center;
+                                justify-content:center;pointer-events:none;">
+                        <div style="width:60%;height:45%;border:2.5px solid var(--accent);
+                                    border-radius:8px;box-shadow:0 0 0 2000px rgba(0,0,0,0.45);">
+                        </div>
+                    </div>
+                    <button id="btn-stop-scan" style="position:absolute;top:8px;right:8px;
+                        background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:20px;
+                        padding:4px 10px;font-size:12px;cursor:pointer;">Batal</button>
+                </div>
+                <!-- Kurir terdeteksi -->
+                <div id="kurir-chip" style="display:none;margin-top:8px;padding:8px 12px;
+                     background:var(--accent-lt);border-radius:var(--radius-sm);
+                     display:none;align-items:center;gap:8px;">
+                    <span id="kurir-icon" style="font-size:18px;"></span>
+                    <div style="flex:1;">
+                        <div style="font-size:11px;color:var(--muted);">Terdeteksi otomatis</div>
+                        <div style="font-weight:700;font-size:13px;" id="kurir-name">—</div>
+                    </div>
+                    <select class="form-select" id="kurir-select"
+                        style="width:auto;font-size:12px;padding:4px 8px;">
+                        <option value="">— Pilih kurir —</option>
+                        <option value="JNE">JNE</option>
+                        <option value="J&T Express">J&T Express</option>
+                        <option value="J&T Cargo">J&T Cargo</option>
+                        <option value="SiCepat">SiCepat</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
             </div>
 
             <div class="form-group">
@@ -119,6 +162,7 @@
         fotoWrap.style.display = 'none';
         fotoPreview.src  = '';
         btnSimpan.disabled = true;
+        resetKurirChip();
 
         panel.classList.add('show');
         overlay.classList.add('show');
@@ -126,6 +170,7 @@
     }
 
     function closePanel() {
+        stopScanner();
         panel.classList.remove('show');
         overlay.classList.remove('show');
         activeSessionId = null;
@@ -140,7 +185,10 @@
         btnSimpan.disabled = !(inputResi.value.trim() && fotoFile);
     }
 
-    inputResi.addEventListener('input', validatePanel);
+    inputResi.addEventListener('input', () => {
+        validatePanel();
+        updateKurirChip(inputResi.value.trim());
+    });
 
     inputFoto.addEventListener('change', e => {
         const file = e.target.files?.[0];
@@ -160,6 +208,7 @@
         const sessionIdSnapshot  = activeSessionId;
         const fotoFileSnapshot   = fotoFile;
         const resiNumberSnapshot = inputResi.value.trim();
+        const kurirSnapshot      = document.getElementById('kurir-select')?.value || '';
 
         closePanel();
         setLoading(true, 'Mengupload foto resi...');
@@ -200,6 +249,93 @@
             setLoading(false);
         }
     });
+
+    // ── Scan Barcode ──────────────────────────────────────────
+    let codeReader = null;
+
+    async function startScanner() {
+        const scanWrap = document.getElementById('scan-wrap');
+        const video    = document.getElementById('scan-video');
+        scanWrap.style.display = 'block';
+
+        try {
+            codeReader = new ZXing.BrowserMultiFormatReader();
+            const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+            // Pilih kamera belakang kalau ada
+            const backCam = devices.find(d =>
+                /back|rear|environment/i.test(d.label)
+            ) || devices[devices.length - 1];
+
+            await codeReader.decodeFromVideoDevice(
+                backCam?.deviceId || undefined,
+                video,
+                (result, err) => {
+                    if (!result) return;
+                    const text = result.getText();
+                    inputResi.value = text;
+                    updateKurirChip(text);
+                    validatePanel();
+                    stopScanner();
+                    if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+                    showToast('✅ Resi berhasil discan!', 'success');
+                }
+            );
+        } catch (err) {
+            stopScanner();
+            showToast('Kamera tidak bisa diakses: ' + err.message, 'error');
+        }
+    }
+
+    function stopScanner() {
+        if (codeReader) {
+            codeReader.reset();
+            codeReader = null;
+        }
+        const scanWrap = document.getElementById('scan-wrap');
+        if (scanWrap) scanWrap.style.display = 'none';
+    }
+
+    document.getElementById('btn-scan-resi').addEventListener('click', () => {
+        const scanWrap = document.getElementById('scan-wrap');
+        if (scanWrap.style.display === 'none' || !scanWrap.style.display) {
+            startScanner();
+        } else {
+            stopScanner();
+        }
+    });
+
+    document.getElementById('btn-stop-scan').addEventListener('click', stopScanner);
+
+    // ── Kurir Chip ────────────────────────────────────────────
+    function updateKurirChip(nomorResi) {
+        const chip   = document.getElementById('kurir-chip');
+        const icon   = document.getElementById('kurir-icon');
+        const name   = document.getElementById('kurir-name');
+        const select = document.getElementById('kurir-select');
+
+        if (!nomorResi) { resetKurirChip(); return; }
+
+        const kurir = detectKurir(nomorResi);
+        chip.style.display = 'flex';
+
+        if (kurir) {
+            icon.textContent   = kurir.icon;
+            name.textContent   = kurir.name;
+            select.value       = kurir.name;
+        } else {
+            icon.textContent   = '❓';
+            name.textContent   = 'Tidak terdeteksi — pilih manual';
+            select.value       = '';
+        }
+    }
+
+    function resetKurirChip() {
+        const chip = document.getElementById('kurir-chip');
+        chip.style.display = 'none';
+        document.getElementById('kurir-icon').textContent  = '';
+        document.getElementById('kurir-name').textContent  = '—';
+        document.getElementById('kurir-select').value      = '';
+    }
 
     // ── Render Antrian ────────────────────────────────────────
     function renderQueue() {

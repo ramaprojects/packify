@@ -519,6 +519,27 @@ async function retrySyncQueue(onProgress) {
     return { success, failed };
 }
 
+// ─── DETECT KURIR ──────────────────────────
+const KURIR_PATTERNS = [
+    // J&T Cargo — cek duluan sebelum J&T biasa karena prefix JC spesifik
+    { name: 'J&T Cargo',   icon: '🚛', pattern: /^JC\d{8,12}$/i },
+    // SiCepat
+    { name: 'SiCepat',     icon: '⚡', pattern: /^(SC|00)\d{10,14}$/i },
+    // J&T Express
+    { name: 'J&T Express', icon: '🟡', pattern: /^JP\d{8,12}$/i },
+    // JNE — 15 digit angka murni
+    { name: 'JNE',         icon: '🔴', pattern: /^\d{15}$/ },
+];
+
+function detectKurir(nomorResi) {
+    if (!nomorResi) return null;
+    const clean = nomorResi.trim().toUpperCase().replace(/\s+/g, '');
+    for (const k of KURIR_PATTERNS) {
+        if (k.pattern.test(clean)) return k;
+    }
+    return null;
+}
+
 // ─── RESI BADGE ────────────────────────────
 function countPendingResi() {
     return loadAllSessions().filter(s => getStatus(s) === 'PENDING_RESI').length;
