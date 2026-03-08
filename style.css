@@ -36,6 +36,23 @@
 
 html { -webkit-tap-highlight-color: transparent; }
 
+/* ─── PAGE TRANSITION ───────────────────── */
+.page-transition-wrap {
+    animation: pageIn 0.2s ease both;
+}
+@keyframes pageIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+body.page-exit .page-transition-wrap {
+    animation: pageOut 0.18s ease both;
+    pointer-events: none;
+}
+@keyframes pageOut {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-6px); }
+}
+
 body {
     font-family: 'DM Sans', system-ui, sans-serif;
     background:  var(--paper);

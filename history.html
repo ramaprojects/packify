@@ -12,13 +12,13 @@
 <body>
 
     <header class="app-header">
-        <button class="btn-back" onclick="window.location.href='index.html'">←</button>
+        <button class="btn-back" onclick="navigateTo('index.html')">←</button>
         <h6>History</h6>
         <button id="btn-wa" title="Kirim laporan WhatsApp"
             style="background:none;border:none;font-size:22px;cursor:pointer;padding:4px;">📤</button>
     </header>
 
-    <div class="page-content" style="padding-top:8px;">
+    <div class="page-content page-transition-wrap" style="padding-top:8px;">
 
         <!-- Sync status banner -->
         <div id="sync-banner" class="d-none"
@@ -121,33 +121,10 @@
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Bottom Nav -->
-    <nav class="bottom-nav">
-        <button class="nav-item" data-nav="dashboard">
-            <span class="nav-icon">🏠</span><span>Dashboard</span>
-        </button>
-        <button class="nav-item" data-nav="checklist">
-            <span class="nav-icon">✅</span><span>Checklist</span>
-        </button>
-        <button class="nav-item" data-nav="resi" style="position:relative;">
-            <span class="nav-icon">🚚</span><span>Resi</span>
-            <span id="resi-badge-nav" class="nav-badge d-none">0</span>
-        </button>
-        <button class="nav-item active" data-nav="history">
-            <span class="nav-icon">🕐</span><span>History</span>
-        </button>
-    </nav>
+    <nav id="bottom-nav-root"></nav>
 
     <script src="app.js"></script>
     <script>
-    // ── Helpers ───────────────────────────────────────────────
-    function showToast(msg, type = '') {
-        const tc = document.getElementById('toast-container');
-        const el = document.createElement('div');
-        el.className = `toast ${type}`;
-        el.textContent = msg;
-        tc.appendChild(el);
-        setTimeout(() => el.remove(), 3500);
-    }
 
     // ── State ─────────────────────────────────────────────────
     let allSessions  = [];

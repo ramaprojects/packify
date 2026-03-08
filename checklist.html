@@ -12,7 +12,7 @@
 <body>
 
     <!-- ══ FASE 1: STEP-BY-STEP INPUT ══════════════════════════ -->
-    <div id="phase-input">
+    <div id="phase-input" class="page-transition-wrap">
         <header class="app-header">
             <button class="btn-back" id="btn-back-step">←</button>
             <h6 id="step-title">Nama Penerima</h6>
@@ -102,7 +102,7 @@
     </div>
 
     <!-- ══ FASE 2: CHECKLIST FOTO ══════════════════════════════ -->
-    <div id="phase-checklist" class="d-none">
+    <div id="phase-checklist" class="d-none page-transition-wrap">
         <header class="app-header">
             <button class="btn-back" id="btn-back-checklist">←</button>
             <h6>Checklist Foto</h6>
@@ -152,39 +152,11 @@
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Bottom nav (fase 1 saja) -->
-    <nav class="bottom-nav" id="bottom-nav">
-        <button class="nav-item" data-nav="dashboard">
-            <span class="nav-icon">🏠</span><span>Dashboard</span>
-        </button>
-        <button class="nav-item active" data-nav="checklist">
-            <span class="nav-icon">✅</span><span>Checklist</span>
-        </button>
-        <button class="nav-item" data-nav="resi" style="position:relative;">
-            <span class="nav-icon">🚚</span><span>Resi</span>
-            <span id="resi-badge-nav" class="nav-badge d-none">0</span>
-        </button>
-        <button class="nav-item" data-nav="history">
-            <span class="nav-icon">🕐</span><span>History</span>
-        </button>
-    </nav>
+    <nav id="bottom-nav-root"></nav>
 
     <script src="app.js"></script>
     <script>
-    // ── Helpers ────────────────────────────────────────────────
-    function showToast(msg, type = '') {
-        const tc = document.getElementById('toast-container');
-        const el = document.createElement('div');
-        el.className = `toast ${type}`;
-        el.textContent = msg;
-        tc.appendChild(el);
-        setTimeout(() => el.remove(), 3000);
-    }
 
-    function setLoading(show, text = 'Mengupload foto...') {
-        const ov = document.getElementById('loading');
-        document.getElementById('loading-text').textContent = text;
-        ov.classList.toggle('show', show);
-    }
 
     // ── Fase 1: Step-by-step Input ────────────────────────────
     const inputPlatform  = document.getElementById('input-platform');
@@ -220,7 +192,7 @@
     // Tombol back di header — kembali ke step sebelumnya atau ke index
     document.getElementById('btn-back-step').addEventListener('click', () => {
         if (currentStep > 1) goToStep(currentStep - 1);
-        else window.location.href = 'index.html';
+        else navigateTo('index.html');
     });
 
     // ── Step 1: Operator picker ──────────────────────────────
@@ -318,7 +290,7 @@
 
         // Sembunyikan fase 1
         document.getElementById('phase-input').classList.add('d-none');
-        document.getElementById('bottom-nav').classList.add('d-none');
+        document.getElementById('bottom-nav-root').classList.add('d-none');
         document.getElementById('phase-checklist').classList.remove('d-none');
 
         // Header info
@@ -509,7 +481,7 @@
             clearCurrentSession();
             showToast(`✅ Sesi tersimpan! +${currentSession.poin} poin`, 'success');
 
-            setTimeout(() => window.location.href = 'resi.html', 1200);
+            setTimeout(() => navigateTo('resi.html'), 1200);
         } catch (err) {
             showToast('Gagal menyimpan: ' + err.message, 'error');
         } finally {

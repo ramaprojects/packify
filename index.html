@@ -8,6 +8,67 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <style>
+        .skeleton-text {
+            position:      relative;
+            color:         transparent !important;
+            border-radius: 6px;
+            overflow:      hidden;
+            min-width:     80px;
+            display:       inline-block;
+        }
+        .skeleton-text::after {
+            content:    '';
+            position:   absolute;
+            inset:      0;
+            background: linear-gradient(
+                90deg,
+                rgba(255,255,255,0.15) 0%,
+                rgba(255,255,255,0.40) 45%,
+                rgba(255,255,255,0.15) 100%
+            );
+            background-size: 200% 100%;
+            animation:  shimmer 1.4s infinite;
+            border-radius: inherit;
+        }
+        @keyframes shimmer {
+            0%   { background-position: 200% center; }
+            100% { background-position: -200% center; }
+        }
+
+        /* ── Leaderboard skeleton ── */
+        .leaderboard-skeleton { padding: 4px 0; }
+        .leaderboard-skeleton-row {
+            display:     flex;
+            align-items: center;
+            gap:         12px;
+            padding:     12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .leaderboard-skeleton-row:last-child { border-bottom: none; }
+        .sk-block {
+            border-radius: 6px;
+            overflow:      hidden;
+            position:      relative;
+            background:    #e8e8e8;
+        }
+        .sk-block::after {
+            content:    '';
+            position:   absolute;
+            inset:      0;
+            background: linear-gradient(
+                90deg,
+                rgba(255,255,255,0)    0%,
+                rgba(255,255,255,0.6) 45%,
+                rgba(255,255,255,0)  100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 1.4s infinite;
+        }
+        .sk-rank { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
+        .sk-name { flex: 1;    height: 14px; }
+        .sk-poin { width: 60px; height: 14px; }
+    </style>
 </head>
 <body>
 
@@ -18,15 +79,15 @@
         <div style="width:36px"></div>
     </header>
 
-    <div class="page-content">
+    <div class="page-content page-transition-wrap">
 
         <!-- POIN BANNER -->
         <div class="poin-banner" id="poin-banner">
             <div class="poin-banner-icon">⭐</div>
             <div class="poin-banner-info">
                 <div class="poin-banner-name" id="banner-name">Halo!</div>
-                <div class="poin-banner-val" id="banner-poin">— poin</div>
-                <div class="poin-banner-streak" id="banner-streak">🔥 — hari streak</div>
+                <div class="poin-banner-val skeleton-text" id="banner-poin">— poin</div>
+                <div class="poin-banner-streak skeleton-text" id="banner-streak">🔥 — hari streak</div>
             </div>
             <div id="banner-badges" style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;"></div>
         </div>
@@ -45,7 +106,7 @@
 
         <!-- CTA -->
         <button class="btn btn-primary btn-full btn-lg" style="margin-bottom:24px;"
-            onclick="window.location.href='checklist.html'">
+            onclick="navigateTo('checklist.html')">
             + Mulai Packing Baru
         </button>
 
@@ -53,8 +114,22 @@
         <div class="section-title">🏆 Leaderboard Minggu Ini</div>
         <div class="card" style="margin-bottom:24px;">
             <div id="leaderboard-list">
-                <div class="empty-state" style="padding:24px;">
-                    <div class="spinner"></div>
+                <div class="leaderboard-skeleton">
+                    <div class="leaderboard-skeleton-row">
+                        <div class="sk-block sk-rank"></div>
+                        <div class="sk-block sk-name"></div>
+                        <div class="sk-block sk-poin"></div>
+                    </div>
+                    <div class="leaderboard-skeleton-row">
+                        <div class="sk-block sk-rank"></div>
+                        <div class="sk-block sk-name"></div>
+                        <div class="sk-block sk-poin"></div>
+                    </div>
+                    <div class="leaderboard-skeleton-row">
+                        <div class="sk-block sk-rank"></div>
+                        <div class="sk-block sk-name"></div>
+                        <div class="sk-block sk-poin"></div>
+                    </div>
                 </div>
             </div>
             <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
@@ -84,41 +159,13 @@
     </div>
 
     <!-- BOTTOM NAV -->
-    <nav class="bottom-nav">
-        <button class="nav-item active" data-nav="dashboard">
-            <span class="nav-icon">🏠</span>
-            <span>Dashboard</span>
-        </button>
-        <button class="nav-item" data-nav="checklist">
-            <span class="nav-icon">✅</span>
-            <span>Checklist</span>
-        </button>
-        <button class="nav-item" data-nav="resi" style="position:relative;">
-            <span class="nav-icon">🚚</span>
-            <span>Resi</span>
-            <span id="resi-badge-nav" class="nav-badge d-none">0</span>
-        </button>
-        <button class="nav-item" data-nav="history">
-            <span class="nav-icon">🕐</span>
-            <span>History</span>
-        </button>
-    </nav>
+    <nav id="bottom-nav-root"></nav>
 
     <!-- TOAST CONTAINER -->
     <div class="toast-container" id="toast-container"></div>
 
     <script src="app.js"></script>
     <script>
-
-        // ── Toast helper ──────────────────────────
-        function showToast(msg, type = '') {
-            const tc   = document.getElementById('toast-container');
-            const el   = document.createElement('div');
-            el.className = `toast ${type}`;
-            el.textContent = msg;
-            tc.appendChild(el);
-            setTimeout(() => el.remove(), 3000);
-        }
 
         // ── Render Stats (lokal) ──────────────────
         function renderStats() {
@@ -176,9 +223,19 @@
             const streak  = myData.streak     || getStreakLocal(op);
             const badges  = myData.badges     || [];
 
-            document.getElementById('banner-name').textContent   = `Halo, ${op}! 👋`;
-            document.getElementById('banner-poin').textContent   = `${poin} poin`;
-            document.getElementById('banner-streak').textContent = `🔥 ${streak} hari streak`;
+            const elPoin   = document.getElementById('banner-poin');
+            const elStreak = document.getElementById('banner-streak');
+
+            elPoin.textContent   = `${poin} poin`;
+            elStreak.textContent = `🔥 ${streak} hari streak`;
+
+            // Lepas skeleton shimmer setelah data nyata masuk
+            if (gamifData) {
+                elPoin.classList.remove('skeleton-text');
+                elStreak.classList.remove('skeleton-text');
+            }
+
+            document.getElementById('banner-name').textContent = `Halo, ${op}! 👋`;
 
             // Badge icon di pojok banner (max 3)
             const earnedBadges = BADGES.filter(b => badges.includes(b.id)).slice(0, 3);

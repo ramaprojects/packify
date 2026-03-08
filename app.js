@@ -456,7 +456,7 @@ async function uploadPhoto({ sessionId, type, item, penerima, resiNumber, file }
 async function syncSession(session, { onSuccess, onFail } = {}) {
     const sessionId = getSessionID(session);
     try {
-        const res = await fetch(`${LINK_GAS}?type=sync_session&key=${API_KEY}`, {
+        const res = await fetch(`${LINK_GAS}?action=sync_session&key=${API_KEY}`, {
             method: 'POST', redirect: 'follow',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify(session),
@@ -533,6 +533,56 @@ function updateResiNavBadge() {
 }
 
 // ─── NAV GLOBAL ────────────────────────────
+// ─── SHARED UI HELPERS ─────────────────────────
+function showToast(msg, type = '') {
+    const tc = document.getElementById('toast-container');
+    if (!tc) return;
+    const el = document.createElement('div');
+    el.className   = `toast ${type}`;
+    el.textContent = msg;
+    tc.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+}
+
+function setLoading(show, text = 'Memproses...') {
+    const ov = document.getElementById('loading');
+    if (!ov) return;
+    const lt = document.getElementById('loading-text');
+    if (lt) lt.textContent = text;
+    ov.classList.toggle('show', show);
+}
+
+// ─── BOTTOM NAV INJECT ─────────────────────
+(function injectBottomNav() {
+    const root = document.getElementById('bottom-nav-root');
+    if (!root) return;
+    const page   = location.pathname.split('/').pop() || 'index.html';
+    const active = (name) => page === name ? 'active' : '';
+    root.className = 'bottom-nav';
+    root.innerHTML = [
+        `<button class="nav-item ${active('index.html')}" data-nav="dashboard">`,
+        `    <span class="nav-icon">&#127968;</span><span>Dashboard</span>`,
+        `</button>`,
+        `<button class="nav-item ${active('checklist.html')}" data-nav="checklist">`,
+        `    <span class="nav-icon">&#9989;</span><span>Checklist</span>`,
+        `</button>`,
+        `<button class="nav-item ${active('resi.html')}" data-nav="resi" style="position:relative;">`,
+        `    <span class="nav-icon">&#128666;</span><span>Resi</span>`,
+        `    <span id="resi-badge-nav" class="nav-badge d-none">0</span>`,
+        `</button>`,
+        `<button class="nav-item ${active('history.html')}" data-nav="history">`,
+        `    <span class="nav-icon">&#128336;</span><span>History</span>`,
+        `</button>`,
+    ].join('');
+})();
+
+// ─── PAGE TRANSITION ─────────────────────────
+function navigateTo(url) {
+    if (!url) return;
+    document.body.classList.add('page-exit');
+    setTimeout(() => { window.location.href = url; }, 180);
+}
+
 document.addEventListener('click', e => {
     const btn = e.target.closest('[data-nav]');
     if (!btn) return;
@@ -542,7 +592,7 @@ document.addEventListener('click', e => {
         resi:      'resi.html',
         history:   'history.html',
     };
-    if (map[btn.dataset.nav]) window.location.href = map[btn.dataset.nav];
+    if (map[btn.dataset.nav]) navigateTo(map[btn.dataset.nav]);
 });
 
 // ─── SEARCHABLE DROPDOWN (Penerima) ────────
