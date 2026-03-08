@@ -91,9 +91,9 @@
             <div class="poin-banner-info">
                 <div class="poin-banner-name" id="banner-name">Halo!</div>
                 <div class="poin-banner-val skeleton-text" id="banner-poin">— poin</div>
-                <div class="poin-banner-streak skeleton-text" id="banner-streak">🔥 — hari streak</div>
+                <div class="poin-banner-streak" id="banner-streak">🔥 — hari streak</div>
             </div>
-            <div id="banner-badges" style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;"></div>
+            <div id="banner-badges" style="display:none;"></div>
         </div>
 
         <!-- STATS -->
@@ -139,16 +139,6 @@
             <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
                 <small class="text-muted" id="leaderboard-period" style="font-size:11px;"></small>
                 <small class="text-muted" id="last-updated" style="font-size:11px;"></small>
-            </div>
-        </div>
-
-        <!-- BADGE SHELF -->
-        <div class="section-title">🎖️ Badge Kamu</div>
-        <div class="card" style="margin-bottom:24px;">
-            <div class="badge-shelf" id="badge-shelf">
-                <div class="empty-state" style="padding:16px;width:100%;">
-                    <div class="spinner"></div>
-                </div>
             </div>
         </div>
 
@@ -236,7 +226,6 @@
             // Lepas skeleton shimmer setelah data nyata masuk
             if (gamifData) {
                 elPoin.classList.remove('skeleton-text');
-                elStreak.classList.remove('skeleton-text');
             }
 
             document.getElementById('banner-name').textContent = `Halo, ${op}! 👋`;
@@ -299,18 +288,6 @@
             periodEl.textContent = `Periode: ${fmt(ws)} – ${fmt(we)}`;
         }
 
-        // ── Render Badge Shelf ────────────────────
-        function renderBadgeShelf(earnedIds = []) {
-            const shelf = document.getElementById('badge-shelf');
-            shelf.innerHTML = BADGES.map(b => `
-                <div class="badge-item ${earnedIds.includes(b.id) ? 'unlocked' : 'locked'}"
-                    title="${b.desc}">
-                    <i class="${b.icon}" style="font-size:26px;"></i>
-                    <span class="badge-name">${b.label}</span>
-                </div>
-            `).join('');
-        }
-
         // ── Fetch Gamifikasi dari Server ──────────
         async function fetchGamifData() {
             try {
@@ -334,15 +311,12 @@
             const op = getOperator();
             renderBanner(null);
             renderLeaderboard(null);
-            renderBadgeShelf([]);
 
             // Fetch data gamif dari server
             const gamifData = await fetchGamifData();
             if (gamifData) {
                 renderBanner(gamifData);
                 renderLeaderboard(gamifData);
-                const myBadges = gamifData[op]?.badges || [];
-                renderBadgeShelf(myBadges);
 
                 // Simpan ke cache lokal supaya profile.html bisa baca
                 const cache = loadGamifCache();
@@ -367,38 +341,28 @@
                     .filter(s => getPetugas(s) === op && ['DONE','SYNCED'].includes(getStatus(s)))
                     .reduce((sum, s) => sum + (getPoin(s) || 0), 0);
 
-                const fakeStats = { totalDone, streak, isTopWeekly: false };
-                const earnedBadges = BADGES.filter(b => b.check(fakeStats)).map(b => b.id);
-
-                // Fake gamifData untuk render lokal
                 const localGamif = {};
-                localGamif[op] = { poinTotal: localPoin, streak, badges: earnedBadges };
+                localGamif[op] = { poinTotal: localPoin, streak, badges: [] };
                 renderBanner(localGamif);
-                renderBadgeShelf(earnedBadges);
             }
         }
 
         init();
 
         // ── Auto-refresh setiap 60 detik ─────────────────────────
-        // Hanya refresh kalau tab aktif, biar tidak boros battery
         let refreshTimer = null;
 
         function startAutoRefresh() {
             stopAutoRefresh();
             refreshTimer = setInterval(async () => {
-                // Refresh stats lokal
                 renderStats();
                 renderRecent();
                 updateResiNavBadge();
 
-                // Fetch ulang gamif dari server (leaderboard)
                 const gamifData = await fetchGamifData();
                 if (gamifData) {
                     renderBanner(gamifData);
                     renderLeaderboard(gamifData);
-                    const myBadges = gamifData[getOperator()]?.badges || [];
-                    renderBadgeShelf(myBadges);
                 }
             }, 60_000);
         }
@@ -407,11 +371,9 @@
             if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
         }
 
-        // Pause saat tab tidak aktif, resume saat aktif lagi
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) stopAutoRefresh();
             else {
-                // Langsung refresh sekali saat balik ke tab
                 renderStats();
                 renderRecent();
                 updateResiNavBadge();
@@ -419,7 +381,6 @@
                     if (d) {
                         renderBanner(d);
                         renderLeaderboard(d);
-                        renderBadgeShelf(d[getOperator()]?.badges || []);
                     }
                 });
                 startAutoRefresh();

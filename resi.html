@@ -82,23 +82,27 @@
                         padding:4px 10px;font-size:12px;cursor:pointer;">Batal</button>
                 </div>
                 <!-- Kurir terdeteksi -->
-                <div id="kurir-chip" style="display:none;margin-top:8px;padding:8px 12px;
-                     background:var(--accent-lt);border-radius:var(--radius-sm);
-                     display:none;align-items:center;gap:8px;">
-                    <span id="kurir-icon" style="font-size:18px;"></span>
-                    <div style="flex:1;">
-                        <div style="font-size:11px;color:var(--muted);">Terdeteksi otomatis</div>
-                        <div style="font-weight:700;font-size:13px;" id="kurir-name">—</div>
+                <div id="kurir-chip" style="display:none;margin-top:8px;">
+                    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Kurir</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;" id="kurir-pills">
+                        <button type="button" class="kurir-pill" data-value="JNE">
+                            <i class="bi bi-geo-alt-fill"></i> JNE
+                        </button>
+                        <button type="button" class="kurir-pill" data-value="J&T Express">
+                            <i class="bi bi-box-seam-fill"></i> J&T Express
+                        </button>
+                        <button type="button" class="kurir-pill" data-value="J&T Cargo">
+                            <i class="bi bi-truck"></i> J&T Cargo
+                        </button>
+                        <button type="button" class="kurir-pill" data-value="SiCepat">
+                            <i class="bi bi-lightning-fill"></i> SiCepat
+                        </button>
+                        <button type="button" class="kurir-pill" data-value="Lainnya">
+                            <i class="bi bi-three-dots"></i> Lainnya
+                        </button>
                     </div>
-                    <select class="form-select" id="kurir-select"
-                        style="width:auto;font-size:12px;padding:4px 8px;">
-                        <option value="">— Pilih kurir —</option>
-                        <option value="JNE">JNE</option>
-                        <option value="J&T Express">J&T Express</option>
-                        <option value="J&T Cargo">J&T Cargo</option>
-                        <option value="SiCepat">SiCepat</option>
-                        <option value="Lainnya">Lainnya</option>
-                    </select>
+                    <!-- Hidden input sebagai pengganti select -->
+                    <input type="hidden" id="kurir-select" value="">
                 </div>
             </div>
 
@@ -231,7 +235,8 @@
             });
 
             // Update sesi lokal
-            session.resi        = { number: inputResi.value.trim(), photoUrl };
+            session.resi        = { number: resiNumberSnapshot, photoUrl };
+            session.kurir       = kurirSnapshot;
             session.status      = STATUS.DONE;
             session.finishedAt  = now();
 
@@ -311,35 +316,35 @@
 
     document.getElementById('btn-stop-scan').addEventListener('click', stopScanner);
 
+    // ── Kurir Pills ───────────────────────────────────────────
+    document.querySelectorAll('.kurir-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.kurir-pill').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('kurir-select').value = btn.dataset.value;
+        });
+    });
+
+    function setKurirPill(name) {
+        document.querySelectorAll('.kurir-pill').forEach(b => {
+            b.classList.toggle('active', b.dataset.value === name);
+        });
+        document.getElementById('kurir-select').value = name || '';
+    }
+
     // ── Kurir Chip ────────────────────────────────────────────
     function updateKurirChip(nomorResi) {
-        const chip   = document.getElementById('kurir-chip');
-        const icon   = document.getElementById('kurir-icon');
-        const name   = document.getElementById('kurir-name');
-        const select = document.getElementById('kurir-select');
-
+        const chip = document.getElementById('kurir-chip');
         if (!nomorResi) { resetKurirChip(); return; }
 
+        chip.style.display = 'block';
         const kurir = detectKurir(nomorResi);
-        chip.style.display = 'flex';
-
-        if (kurir) {
-            icon.innerHTML     = `<i class="${kurir.icon}" style="font-size:20px;"></i>`;
-            name.textContent   = kurir.name;
-            select.value       = kurir.name;
-        } else {
-            icon.innerHTML     = '<i class="bi bi-question-circle" style="font-size:20px;"></i>';
-            name.textContent   = 'Tidak terdeteksi — pilih manual';
-            select.value       = '';
-        }
+        setKurirPill(kurir ? kurir.name : '');
     }
 
     function resetKurirChip() {
-        const chip = document.getElementById('kurir-chip');
-        chip.style.display = 'none';
-        document.getElementById('kurir-icon').innerHTML    = '';
-        document.getElementById('kurir-name').textContent  = '—';
-        document.getElementById('kurir-select').value      = '';
+        document.getElementById('kurir-chip').style.display = 'none';
+        setKurirPill('');
     }
 
     // ── Render Antrian ────────────────────────────────────────
@@ -403,24 +408,18 @@
             const result = JSON.parse(text);
             if (result.status !== 'success' || !Array.isArray(result.data)) return;
 
-            const serverSessions = result.data;
-            const local          = loadAllSessions();
-            const localIds       = new Set(local.map(s => getSessionID(s)));
+            const serverQueue   = result.data.map(ss => normaliseSession(ss));
+            const serverIds     = new Set(serverQueue.map(s => getSessionID(s)));
 
-            // Tambahkan sesi server yang belum ada di lokal
-            let added = 0;
-            serverSessions.forEach(ss => {
-                const normalised = normaliseSession(ss);
-                if (!localIds.has(getSessionID(normalised))) {
-                    local.push(normalised);
-                    added++;
-                }
-            });
-            if (added > 0) {
-                saveAllSessions(local);
-                renderQueue();
-                updateResiNavBadge();
-            }
+            // Dari lokal, buang PENDING_RESI yang sudah tidak ada di server
+            // tapi pertahankan status lain (PENDING aktif, DONE, dll)
+            const local    = loadAllSessions();
+            const nonQueue = local.filter(s => getStatus(s) !== STATUS.PENDING_RESI);
+            const merged   = [...nonQueue, ...serverQueue];
+
+            saveAllSessions(merged);
+            renderQueue();
+            updateResiNavBadge();
         } catch (err) {
             console.warn('Gagal fetch server queue:', err);
         }

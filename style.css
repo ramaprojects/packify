@@ -1172,3 +1172,27 @@ h1, h2, h3, h4, h5, h6 { font-weight: 700; line-height: 1.25; }
 }
 
 .text-danger { color: var(--red); }
+/* ── Kurir Pills ─────────────────────────────────────────── */
+.kurir-pill {
+    display:      inline-flex;
+    align-items:  center;
+    gap:          6px;
+    padding:      7px 14px;
+    border-radius: 20px;
+    border:       1.5px solid var(--border);
+    background:   var(--surface);
+    color:        var(--ink);
+    font-size:    13px;
+    font-weight:  500;
+    cursor:       pointer;
+    transition:   border-color 0.15s, background 0.15s, color 0.15s;
+}
+.kurir-pill:hover {
+    border-color: var(--accent);
+    color:        var(--accent);
+}
+.kurir-pill.active {
+    background:   var(--accent);
+    border-color: var(--accent);
+    color:        #fff;
+}

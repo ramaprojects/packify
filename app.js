@@ -4,14 +4,28 @@
    ========================================= */
 
 // ─── KONFIGURASI ───────────────────────────
-const LINK_GAS         = 'https://script.google.com/macros/s/AKfycbykbWDanoqMz4ElDYWommSN-XFO0iDQTZZ4m-0fH7tUgic4KA6HMUoQAH_fAaX3Xg69/exec';
-const API_KEY          = '09a638642848807261eca8fd3004a277dc01d2bffbf9a25f';
-const WA_GRUP_NUMBER   = '6281234567890'; // ← ganti nomor WA grup tim
+// Ganti ENV ke 'prod' saat deploy ke lapangan
+const ENV = 'prod';
+
+const CONFIG = {
+    dev: {
+        LINK_GAS: 'https://script.google.com/macros/s/GANTI_DENGAN_URL_GAS_DEV/exec',
+        API_KEY:  'GANTI_DENGAN_API_KEY_DEV',
+    },
+    prod: {
+        LINK_GAS: 'https://script.google.com/macros/s/AKfycbykbWDanoqMz4ElDYWommSN-XFO0iDQTZZ4m-0fH7tUgic4KA6HMUoQAH_fAaX3Xg69/exec',
+        API_KEY:  '09a638642848807261eca8fd3004a277dc01d2bffbf9a25f',
+    },
+};
+
+const LINK_GAS = CONFIG[ENV].LINK_GAS;
+const API_KEY  = CONFIG[ENV].API_KEY;
+const WA_GRUP_NUMBER = '6281234567890'; // ← ganti nomor WA grup tim
 
 // Nama lengkap per operator — dipakai di laporan WA & dropdown
 const OPERATOR_NAMES = {
     ram: 'Rama',
-    nab: 'Nabilah',
+    nab: 'Nabila',
     wul: 'Wulan',
 };
 const STORAGE_KEY      = 'packify_sessions';
@@ -134,7 +148,16 @@ const STOCK_DEDUCTIONS = {
     'Thermal': [
         { item_id: 'thermal',      jumlah: 10 }, // 1 pack = 10 pcs
     ],
-    'Retur':   [
+    'ARRANET': [
+        { item_id: 'hardbox_retur', jumlah: 1 },
+    ],
+    'ARAHNETS': [
+        { item_id: 'hardbox_retur', jumlah: 1 },
+    ],
+    'USER': [
+        { item_id: 'hardbox_retur', jumlah: 1 },
+    ],
+    'MPN': [
         { item_id: 'hardbox_retur', jumlah: 1 },
     ],
 };

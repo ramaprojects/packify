@@ -555,7 +555,7 @@
 
         if (name === 'statistik') loadStatistik();
         if (name === 'redeem')    loadRedeemHistory();
-        if (name === 'reward')    renderRewardCatalog();
+        if (name === 'reward')    loadRewardCatalog();
         if (name === 'stok')      loadStok();
         if (name === 'reset')     renderResetList();
     }
@@ -566,26 +566,36 @@
         list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);">Memuat data...</div>';
 
         try {
-            const res    = await fetch(LINK_GAS + '?action=get_gamif&key=' + API_KEY);
-            const json   = await res.json();
-            const gamif  = (json.status === 'success') ? json.data : {};
+            // Fetch gamifikasi + semua sesi dari server secara paralel
+            const [gamifRes, sessionsRes] = await Promise.all([
+                fetch(LINK_GAS + '?action=get_gamif&key=' + API_KEY, { redirect: 'follow' }),
+                fetch(LINK_GAS + '?action=get_all&key='   + API_KEY, { redirect: 'follow' }),
+            ]);
 
-            const sessions = loadAllSessions();
+            const gamifJson    = await gamifRes.json();
+            const sessionsJson = await sessionsRes.json();
+
+            const gamif    = (gamifJson.status    === 'success') ? gamifJson.data    : {};
+            const sessions = (sessionsJson.status === 'success') ? sessionsJson.data : [];
+
+            const badgeList = (typeof BADGES !== 'undefined') ? BADGES : [];
 
             list.innerHTML = OPERATORS.map(op => {
-                const d       = gamif[op] || {};
-                const poin    = d.poinTotal     || 0;
-                const streak  = d.streak        || 0;
-                const badges  = d.badges        || [];
+                const d      = gamif[op] || {};
+                const poin   = d.poinTotal || 0;
+                const streak = d.streak    || 0;
+                const badges = d.badges    || [];
+
+                // Hitung total packing dari data server
                 const selesai = sessions.filter(s =>
-                    getOperator(s) === op && ['DONE','SYNCED'].includes(getStatus(s))
+                    (s.Petugas || s.petugas || '').toLowerCase() === op.toLowerCase()
+                    && ['DONE','SYNCED'].includes(s.Status || s.status || '')
                 ).length;
 
-                const badgeList = (typeof BADGES !== 'undefined') ? BADGES : [];
                 const badgeHTML = badges.length
                     ? badges.map(id => {
                         const b = badgeList.find(x => x.id === id);
-                        return b ? '<span title="' + b.label + '" style="font-size:18px;">' + b.icon + '</span>' : '';
+                        return b ? '<i class="' + b.icon + '" title="' + b.label + '" style="font-size:20px;color:var(--accent);"></i>' : '';
                     }).join('')
                     : '<span style="font-size:12px;color:var(--muted);">Belum ada</span>';
 
@@ -593,7 +603,7 @@
                     '<div class="operator-card-header">' +
                         '<div style="display:flex;align-items:center;gap:10px;">' +
                             '<div class="operator-avatar">' + op.charAt(0).toUpperCase() + '</div>' +
-                            '<div class="operator-name">' + op + '</div>' +
+                            '<div class="operator-name">' + (OPERATOR_NAMES[op] || op) + '</div>' +
                         '</div>' +
                     '</div>' +
                     '<div class="operator-stats">' +
@@ -611,7 +621,7 @@
                         '</div>' +
                     '</div>' +
                     '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Badge</div>' +
-                    '<div class="op-badges">' + badgeHTML + '</div>' +
+                    '<div class="op-badges" style="gap:6px;">' + badgeHTML + '</div>' +
                 '</div>';
             }).join('');
 
@@ -621,54 +631,58 @@
     }
 
     // ══ RIWAYAT REDEEM ═══════════════════════════════════════
-    function loadRedeemHistory() {
-        const REDEEM_KEY = 'packify_redeem_history';
-        let all = [];
-        try { all = JSON.parse(localStorage.getItem(REDEEM_KEY)) || []; } catch(e) {}
-
+    async function loadRedeemHistory() {
         const el = document.getElementById('redeem-admin-list');
-        if (!all.length) {
-            el.innerHTML = '<div style="padding:16px;text-align:center;font-size:13px;color:var(--muted);">Belum ada riwayat redeem</div>';
-            return;
+        el.innerHTML = '<div style="padding:16px;text-align:center;font-size:13px;color:var(--muted);">Memuat...</div>';
+        try {
+            const res  = await fetch(`${LINK_GAS}?action=get_redeem&key=${API_KEY}`, { redirect: 'follow' });
+            const json = await res.json();
+            if (json.status !== 'success') throw new Error(json.message);
+            const all = (json.data || []).reverse();
+            if (!all.length) {
+                el.innerHTML = '<div style="padding:16px;text-align:center;font-size:13px;color:var(--muted);">Belum ada riwayat redeem</div>';
+                return;
+            }
+            el.innerHTML = all.map(h =>
+                '<div class="redeem-admin-row">' +
+                    '<div class="redeem-admin-info">' +
+                        '<div class="redeem-admin-nama">' + h.nama + '</div>' +
+                        '<div class="redeem-admin-meta">' + h.operator + ' &middot; ' + h.waktu + '</div>' +
+                    '</div>' +
+                    '<span class="redeem-admin-poin">-' + h.poin + ' poin</span>' +
+                '</div>'
+            ).join('');
+        } catch(e) {
+            el.innerHTML = '<div style="padding:16px;text-align:center;font-size:13px;color:var(--orange);">Gagal memuat: ' + e.message + '</div>';
         }
-
-        el.innerHTML = all.slice().reverse().map(h =>
-            '<div class="redeem-admin-row">' +
-                '<span class="redeem-admin-icon">' + h.icon + '</span>' +
-                '<div class="redeem-admin-info">' +
-                    '<div class="redeem-admin-nama">' + h.nama + '</div>' +
-                    '<div class="redeem-admin-meta">' + h.operator + ' &middot; ' + h.waktu + '</div>' +
-                '</div>' +
-                '<span class="redeem-admin-poin">-' + h.poin + ' poin</span>' +
-            '</div>'
-        ).join('');
     }
 
     // ══ REWARD CATALOG ════════════════════════════════════════
-    // Katalog tersimpan di localStorage agar bisa diedit tanpa deploy ulang
-    const CATALOG_KEY = 'packify_reward_catalog';
+    let rewardCatalogData = [];
 
-    function loadCatalog() {
+    async function loadRewardCatalog() {
+        const list = document.getElementById('reward-catalog-list');
+        list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);">Memuat...</div>';
         try {
-            const saved = JSON.parse(localStorage.getItem(CATALOG_KEY));
-            return saved || REWARD_CATALOG;
-        } catch(e) { return REWARD_CATALOG; }
-    }
-
-    function saveCatalog(catalog) {
-        localStorage.setItem(CATALOG_KEY, JSON.stringify(catalog));
+            const res  = await fetch(LINK_GAS + '?action=get_reward&key=' + API_KEY, { redirect: 'follow' });
+            const json = await res.json();
+            if (json.status !== 'success') throw new Error(json.message);
+            rewardCatalogData = json.data || [];
+            // Sync ke localStorage supaya profile.html bisa akses
+            localStorage.setItem('packify_reward_catalog', JSON.stringify(rewardCatalogData));
+            renderRewardCatalog();
+        } catch(e) {
+            list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--orange);">Gagal load: ' + e.message + '</div>';
+        }
     }
 
     function renderRewardCatalog() {
-        const catalog = loadCatalog();
-        const list    = document.getElementById('reward-catalog-list');
-
-        if (!catalog.length) {
+        const list = document.getElementById('reward-catalog-list');
+        if (!rewardCatalogData.length) {
             list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);">Catalog kosong</div>';
             return;
         }
-
-        list.innerHTML = catalog.map((r, idx) => {
+        list.innerHTML = rewardCatalogData.map((r, idx) => {
             const stokCls = r.stok <= 0 ? 'empty' : (r.stok <= 2 ? 'low' : '');
             return '<div class="reward-edit-card">' +
                 '<span class="reward-edit-icon">' + r.icon + '</span>' +
@@ -682,82 +696,109 @@
                         '<button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;"' +
                             ' onclick="editStok(' + idx + ')">Edit Stok</button>' +
                         '<button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;color:var(--orange);border-color:var(--orange);"' +
-                            ' onclick="hapusReward(' + idx + ')">Hapus</button>' +
+                            ' onclick="hapusReward(\'' + r.id + '\')">Hapus</button>' +
                     '</div>' +
                 '</div>' +
             '</div>';
         }).join('');
     }
 
-    function tambahReward() {
-        const icon  = document.getElementById('new-icon').value.trim();
-        const nama  = document.getElementById('new-nama').value.trim();
-        const poin  = parseInt(document.getElementById('new-poin').value) || 0;
-        const stok  = parseInt(document.getElementById('new-stok').value) || 0;
+    async function tambahReward() {
+        const icon = document.getElementById('new-icon').value.trim();
+        const nama = document.getElementById('new-nama').value.trim();
+        const poin = parseInt(document.getElementById('new-poin').value) || 0;
+        const stok = parseInt(document.getElementById('new-stok').value) || 0;
 
         if (!nama || !poin) { showToast('Nama dan poin wajib diisi', 'error'); return; }
-
-        const catalog = loadCatalog();
-        catalog.push({
-            id:   nama.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now(),
-            icon: icon || '🎁',
-            nama, poin, stok,
-        });
-        saveCatalog(catalog);
-
-        document.getElementById('new-icon').value = '';
-        document.getElementById('new-nama').value = '';
-        document.getElementById('new-poin').value = '';
-        document.getElementById('new-stok').value = '';
-
-        renderRewardCatalog();
-        showToast('Reward ' + nama + ' ditambahkan!', 'success');
+        setLoading(true, 'Menyimpan reward...');
+        try {
+            const params = new URLSearchParams({ action: 'add_reward', key: API_KEY, icon: icon || '🎁', nama, poin, stok });
+            const res    = await fetch(LINK_GAS, { method: 'POST', body: params, redirect: 'follow' });
+            const data   = await res.json();
+            if (data.status !== 'success') throw new Error(data.message);
+            rewardCatalogData = data.data;
+            localStorage.setItem('packify_reward_catalog', JSON.stringify(rewardCatalogData));
+            document.getElementById('new-icon').value = '';
+            document.getElementById('new-nama').value = '';
+            document.getElementById('new-poin').value = '';
+            document.getElementById('new-stok').value = '';
+            renderRewardCatalog();
+            showToast('Reward ' + nama + ' ditambahkan!', 'success');
+        } catch(e) {
+            showToast('Gagal tambah: ' + e.message, 'error');
+        } finally {
+            setLoading(false);
+        }
     }
 
-    function editStok(idx) {
-        const catalog = loadCatalog();
-        const r       = catalog[idx];
+    async function editStok(idx) {
+        const r       = rewardCatalogData[idx];
         const newStok = prompt('Stok baru untuk ' + r.nama + ':', r.stok);
         if (newStok === null) return;
         const n = parseInt(newStok);
         if (isNaN(n) || n < 0) { showToast('Stok tidak valid', 'error'); return; }
-        catalog[idx].stok = n;
-        saveCatalog(catalog);
-        renderRewardCatalog();
-        showToast('Stok ' + r.nama + ' diupdate ke ' + n, 'success');
+        setLoading(true, 'Update stok...');
+        try {
+            const params = new URLSearchParams({ action: 'edit_reward_stok', key: API_KEY, id: r.id, stok: n });
+            const res    = await fetch(LINK_GAS, { method: 'POST', body: params, redirect: 'follow' });
+            const data   = await res.json();
+            if (data.status !== 'success') throw new Error(data.message);
+            rewardCatalogData = data.data;
+            localStorage.setItem('packify_reward_catalog', JSON.stringify(rewardCatalogData));
+            renderRewardCatalog();
+            showToast('Stok ' + r.nama + ' → ' + n, 'success');
+        } catch(e) {
+            showToast('Gagal update: ' + e.message, 'error');
+        } finally {
+            setLoading(false);
+        }
     }
 
-    function hapusReward(idx) {
-        const catalog = loadCatalog();
-        const r       = catalog[idx];
-        if (!confirm('Hapus reward "' + r.nama + '"?')) return;
-        catalog.splice(idx, 1);
-        saveCatalog(catalog);
-        renderRewardCatalog();
-        showToast('Reward dihapus', 'success');
+    async function hapusReward(id) {
+        const r = rewardCatalogData.find(x => x.id === id);
+        if (!r || !confirm('Hapus reward "' + r.nama + '"?')) return;
+        setLoading(true, 'Menghapus reward...');
+        try {
+            const params = new URLSearchParams({ action: 'delete_reward', key: API_KEY, id });
+            const res    = await fetch(LINK_GAS, { method: 'POST', body: params, redirect: 'follow' });
+            const data   = await res.json();
+            if (data.status !== 'success') throw new Error(data.message);
+            rewardCatalogData = data.data;
+            localStorage.setItem('packify_reward_catalog', JSON.stringify(rewardCatalogData));
+            renderRewardCatalog();
+            showToast('Reward dihapus', 'success');
+        } catch(e) {
+            showToast('Gagal hapus: ' + e.message, 'error');
+        } finally {
+            setLoading(false);
+        }
     }
 
     // ══ RESET POIN ═══════════════════════════════════════════
     let resetTarget = null;
 
-    function renderResetList() {
+    async function renderResetList() {
         const list = document.getElementById('reset-list');
-
-        // Ambil data poin dari cache
-        const gamif = loadGamifCache();
-
-        list.innerHTML = OPERATORS.map(op => {
-            const poin = gamif['poin_' + op] || 0;
-            return '<div class="operator-card" style="display:flex;align-items:center;gap:12px;">' +
-                '<div class="operator-avatar">' + op.charAt(0).toUpperCase() + '</div>' +
-                '<div style="flex:1;">' +
-                    '<div class="operator-name">' + op + '</div>' +
-                    '<div style="font-family:\'DM Mono\',monospace;font-size:13px;color:var(--muted);">' + poin + ' poin</div>' +
-                '</div>' +
-                '<button class="btn btn-secondary" style="color:var(--orange);border-color:var(--orange);font-size:12px;"' +
-                    ' onclick="openResetPanel(\'' + op + '\',' + poin + ')">Reset</button>' +
-            '</div>';
-        }).join('');
+        list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);">Memuat...</div>';
+        try {
+            const res  = await fetch(`${LINK_GAS}?action=get_gamif&key=${API_KEY}`, { redirect: 'follow' });
+            const json = await res.json();
+            const gamif = (json.status === 'success') ? json.data : {};
+            list.innerHTML = OPERATORS.map(op => {
+                const poin = (gamif[op] || {}).poinTotal || 0;
+                return '<div class="operator-card" style="display:flex;align-items:center;gap:12px;">' +
+                    '<div class="operator-avatar">' + op.charAt(0).toUpperCase() + '</div>' +
+                    '<div style="flex:1;">' +
+                        '<div class="operator-name">' + (OPERATOR_NAMES[op] || op) + '</div>' +
+                        '<div style="font-family:\'DM Mono\',monospace;font-size:13px;color:var(--muted);">' + poin + ' poin</div>' +
+                    '</div>' +
+                    '<button class="btn btn-secondary" style="color:var(--orange);border-color:var(--orange);font-size:12px;"' +
+                        ' onclick="openResetPanel(\'' + op + '\',' + poin + ')">Reset</button>' +
+                '</div>';
+            }).join('');
+        } catch(e) {
+            list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--orange);">Gagal memuat</div>';
+        }
     }
 
     const resetPanel   = document.getElementById('reset-panel');
@@ -792,11 +833,6 @@
             const res    = await fetch(LINK_GAS, { method: 'POST', body: params });
             const data   = await res.json();
             if (data.status !== 'success') throw new Error(data.message || 'Gagal reset');
-
-            // Update cache lokal
-            const gamif = loadGamifCache();
-            gamif['poin_' + op] = 0;
-            saveGamifCache(gamif);
 
             renderResetList();
             showToast('Poin ' + op + ' berhasil direset!', 'success');

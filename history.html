@@ -562,24 +562,17 @@
             const result = JSON.parse(text);
             if (result.status !== 'success' || !Array.isArray(result.data)) return;
 
-            const serverData = result.data;
-            const local      = loadAllSessions();
-            const localIds   = new Set(local.map(s => getSessionID(s)));
+            const serverData = result.data.map(ss => normaliseSession(ss));
+            const serverIds  = new Set(serverData.map(s => getSessionID(s)));
 
-            let merged = [...local];
-            serverData.forEach(ss => {
-                const normalised = normaliseSession(ss);
-                const id  = getSessionID(normalised);
-                const idx = merged.findIndex(s => getSessionID(s) === id);
-                if (idx > -1) {
-                    if (['DONE','SYNCED'].includes(getStatus(normalised))) {
-                        merged[idx] = { ...merged[idx], ...normalised };
-                    }
-                } else {
-                    merged.push(normalised);
-                }
-            });
+            // Pertahankan sesi PENDING dari lokal yang belum ada di server
+            const local   = loadAllSessions();
+            const pending = local.filter(s =>
+                !serverIds.has(getSessionID(s)) &&
+                ['PENDING', 'PENDING_RESI'].includes(getStatus(s))
+            );
 
+            const merged = [...serverData, ...pending];
             saveAllSessions(merged);
             allSessions = merged;
             renderList();
