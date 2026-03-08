@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Packify -- Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        /* PIN Gate */
+        .pin-gate {
+            position: fixed; inset: 0;
+            background: var(--bg);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 16px; z-index: 999;
+            padding: 32px;
+        }
+        .pin-gate.hidden { display: none; }
+        .pin-title { font-size: 22px; font-weight: 700; }
+        .pin-sub   { font-size: 13px; color: var(--muted); margin-top: -8px; }
+        .pin-dots  { display: flex; gap: 12px; margin: 8px 0; }
+        .pin-dot {
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: transparent;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+        .pin-dot.error  { background: var(--orange); border-color: var(--orange); }
+        .pin-keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 72px);
+            gap: 10px;
+        }
+        .pin-key {
+            height: 64px;
+            border-radius: var(--radius);
+            border: 1.5px solid var(--border);
+            background: var(--white);
+            font-size: 20px; font-weight: 600;
+            font-family: 'DM Mono', monospace;
+            cursor: pointer;
+            transition: background 0.1s, transform 0.1s;
+        }
+        .pin-key:active { background: var(--accent-lt); transform: scale(0.94); }
+        .pin-key.wide { grid-column: span 2; }
+        .pin-error { color: var(--orange); font-size: 12px; font-weight: 600; }
+        .pin-locked { color: var(--muted); font-size: 12px; }
+
+        /* Section tabs */
+        .admin-tabs {
+            display: flex; gap: 6px;
+            overflow-x: auto; padding-bottom: 2px;
+            margin-bottom: 20px;
+            scrollbar-width: none;
+        }
+        .admin-tabs::-webkit-scrollbar { display: none; }
+        .admin-tab {
+            flex-shrink: 0;
+            padding: 7px 14px;
+            border-radius: 20px;
+            border: 1.5px solid var(--border);
+            background: var(--white);
+            font-size: 12px; font-weight: 600;
+            cursor: pointer; color: var(--muted);
+            transition: all 0.15s;
+        }
+        .admin-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        /* Stat cards */
+        .operator-card {
+            background: var(--white);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 10px;
+        }
+        .operator-card-header {
+            display: flex; align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .operator-avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: var(--accent-lt);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; font-weight: 700;
+            color: var(--accent);
+        }
+        .operator-name { font-size: 16px; font-weight: 700; text-transform: capitalize; }
+        .operator-stats {
+            display: grid; grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px; margin-bottom: 12px;
+        }
+        .op-stat { text-align: center; }
+        .op-stat-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 18px; font-weight: 500;
+        }
+        .op-stat-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+        .op-badges { display: flex; gap: 4px; flex-wrap: wrap; min-height: 20px; }
+
+        /* Redeem history */
+        .redeem-admin-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .redeem-admin-row:last-child { border-bottom: none; }
+        .redeem-admin-icon { font-size: 22px; flex-shrink: 0; }
+        .redeem-admin-info { flex: 1; }
+        .redeem-admin-nama { font-size: 13px; font-weight: 600; }
+        .redeem-admin-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+        .redeem-admin-poin {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px; color: var(--orange); font-weight: 600;
+        }
+
+        /* Reward catalog editor */
+        .reward-edit-card {
+            background: var(--white);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            margin-bottom: 10px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .reward-edit-icon { font-size: 28px; flex-shrink: 0; }
+        .reward-edit-info { flex: 1; }
+        .reward-edit-nama { font-size: 14px; font-weight: 600; }
+        .reward-edit-meta { font-size: 12px; color: var(--muted); }
+        .reward-edit-actions { display: flex; gap: 8px; }
+
+        /* Stok badge */
+        .stok-badge {
+            font-family: 'DM Mono', monospace;
+            font-size: 11px; font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: var(--accent-lt);
+            color: var(--accent);
+        }
+        .stok-badge.low { background: #fff3e0; color: var(--orange); }
+        .stok-badge.empty { background: #fce4e4; color: #c62828; }
+
+        /* Stock items */
+        .stock-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .stock-item:last-child { border-bottom: none; }
+        .stock-item-info { flex: 1; min-width: 0; }
+        .stock-item-nama { font-size: 13px; font-weight: 600; }
+        .stock-item-satuan { font-size: 11px; color: var(--muted); }
+        .stock-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+        .stock-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 16px; font-weight: 600;
+        }
+        .stock-val.ok     { color: var(--accent); }
+        .stock-val.low    { color: var(--orange); }
+        .stock-val.empty  { color: #c62828; }
+        .stock-actions { display: flex; gap: 6px; }
+        .restock-panel-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 0; border-bottom: 1px solid var(--border);
+        }
+        .restock-panel-item:last-child { border-bottom: none; }
+        .qty-control { display: flex; align-items: center; gap: 8px; }
+        .qty-btn {
+            width: 32px; height: 32px; border-radius: 50%;
+            border: 1.5px solid var(--border); background: var(--white);
+            font-size: 18px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.1s;
+        }
+        .qty-btn:active { background: var(--accent-lt); }
+        .qty-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 16px; font-weight: 600; min-width: 32px; text-align: center;
+        }
+        .add-reward-form {
+            background: var(--white);
+            border: 1.5px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .form-row { display: flex; gap: 8px; }
+        .form-row .form-group { flex: 1; }
+    </style>
+</head>
+<body>
+
+    <!-- PIN GATE -->
+    <div class="pin-gate" id="pin-gate">
+        <div style="font-size:40px;">🔐</div>
+        <div class="pin-title">Admin Panel</div>
+        <div class="pin-sub">Masukkan PIN untuk melanjutkan</div>
+        <div class="pin-dots" id="pin-dots">
+            <div class="pin-dot" id="dot-0"></div>
+            <div class="pin-dot" id="dot-1"></div>
+            <div class="pin-dot" id="dot-2"></div>
+            <div class="pin-dot" id="dot-3"></div>
+        </div>
+        <div class="pin-error d-none" id="pin-error">PIN salah!</div>
+        <div class="pin-locked d-none" id="pin-locked"></div>
+        <div class="pin-keypad" id="pin-keypad">
+            <button class="pin-key" onclick="pinInput('1')">1</button>
+            <button class="pin-key" onclick="pinInput('2')">2</button>
+            <button class="pin-key" onclick="pinInput('3')">3</button>
+            <button class="pin-key" onclick="pinInput('4')">4</button>
+            <button class="pin-key" onclick="pinInput('5')">5</button>
+            <button class="pin-key" onclick="pinInput('6')">6</button>
+            <button class="pin-key" onclick="pinInput('7')">7</button>
+            <button class="pin-key" onclick="pinInput('8')">8</button>
+            <button class="pin-key" onclick="pinInput('9')">9</button>
+            <button class="pin-key" onclick="pinClear()">C</button>
+            <button class="pin-key" onclick="pinInput('0')">0</button>
+            <button class="pin-key" onclick="pinBackspace()">&#9003;</button>
+        </div>
+    </div>
+
+    <!-- ADMIN CONTENT -->
+    <div id="admin-content" style="display:none;">
+
+        <header class="app-header">
+            <span style="font-size:20px;">🔧</span>
+            <h6>Admin Panel</h6>
+            <button class="btn-back" style="font-size:12px;width:auto;padding:0 8px;"
+                onclick="lockAdmin()">Keluar</button>
+        </header>
+
+        <div class="page-content">
+
+            <!-- TABS -->
+            <div class="admin-tabs">
+                <button class="admin-tab active" onclick="switchTab('statistik', this)">Statistik</button>
+                <button class="admin-tab" onclick="switchTab('redeem', this)">Riwayat Redeem</button>
+                <button class="admin-tab" onclick="switchTab('reward', this)">Reward Catalog</button>
+                <button class="admin-tab" onclick="switchTab('stok', this)">Stok Asset</button>
+                <button class="admin-tab" onclick="switchTab('reset', this)">Reset Poin</button>
+            </div>
+
+            <!-- TAB: STATISTIK -->
+            <div id="tab-statistik" class="tab-content">
+                <div id="statistik-list">
+                    <div style="text-align:center;padding:32px;color:var(--muted);">Memuat data...</div>
+                </div>
+            </div>
+
+            <!-- TAB: RIWAYAT REDEEM -->
+            <div id="tab-redeem" class="tab-content" style="display:none;">
+                <div class="card" style="margin-bottom:16px;">
+                    <div id="redeem-admin-list">
+                        <div style="padding:16px;text-align:center;font-size:13px;color:var(--muted);">
+                            Belum ada riwayat redeem
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: REWARD CATALOG -->
+            <div id="tab-reward" class="tab-content" style="display:none;">
+
+                <!-- Form tambah reward -->
+                <div class="add-reward-form">
+                    <div style="font-size:13px;font-weight:700;margin-bottom:12px;">+ Tambah Reward</div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:0 0 64px;">
+                            <label class="form-label">Icon</label>
+                            <input type="text" class="form-control" id="new-icon"
+                                placeholder="🥟" style="text-align:center;font-size:20px;" maxlength="2" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Nama Reward</label>
+                            <input type="text" class="form-control" id="new-nama" placeholder="Batagor" />
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:8px;">
+                        <div class="form-group">
+                            <label class="form-label">Harga Poin</label>
+                            <input type="number" class="form-control font-mono" id="new-poin"
+                                placeholder="50" min="1" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Stok</label>
+                            <input type="number" class="form-control font-mono" id="new-stok"
+                                placeholder="5" min="0" />
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-full" style="margin-top:12px;"
+                        onclick="tambahReward()">Simpan Reward</button>
+                </div>
+
+                <div id="reward-catalog-list"></div>
+            </div>
+
+            <!-- TAB: STOK ASSET -->
+            <div id="tab-stok" class="tab-content" style="display:none;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <div style="font-size:13px;color:var(--muted);">
+                        Update otomatis setiap packing selesai
+                    </div>
+                    <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;"
+                        onclick="loadStok()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+
+                <!-- Warning items -->
+                <div id="stok-warnings" style="margin-bottom:12px;"></div>
+
+                <!-- Stok list -->
+                <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px;">
+                    <div id="stok-list">
+                        <div style="padding:24px;text-align:center;color:var(--muted);">
+                            Memuat stok...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: RESET POIN -->
+            <div id="tab-reset" class="tab-content" style="display:none;">
+                <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+                    Reset akan mengosongkan PoinTotal dan PoinMingguIni operator di server.
+                    Tindakan ini tidak bisa dibatalkan.
+                </div>
+                <div id="reset-list"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- PANEL: RESTOCK -->
+    <div class="panel-overlay" id="restock-overlay"></div>
+    <div class="bottom-panel" id="restock-panel">
+        <div class="panel-handle"></div>
+        <div class="panel-header">
+            <div class="panel-title" id="restock-title">Tambah Stok</div>
+            <button class="btn-close-panel" id="btn-close-restock">✕</button>
+        </div>
+        <div class="panel-body">
+            <div id="restock-item-nama" style="font-size:13px;color:var(--muted);margin-bottom:16px;"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+                <span style="font-size:14px;font-weight:600;">Jumlah tambah</span>
+                <div class="qty-control">
+                    <button class="qty-btn" onclick="adjustQty(-1)">−</button>
+                    <span class="qty-val" id="restock-qty">1</span>
+                    <button class="qty-btn" onclick="adjustQty(1)">+</button>
+                </div>
+            </div>
+            <div id="restock-satuan-info" style="font-size:12px;color:var(--muted);margin-bottom:20px;text-align:center;"></div>
+            <button class="btn btn-primary btn-full btn-lg" id="btn-konfirmasi-restock">
+                Tambah Stok
+            </button>
+            <button class="btn btn-secondary btn-full" id="btn-batal-restock" style="margin-top:8px;">
+                Batal
+            </button>
+        </div>
+    </div>
+
+    <!-- PANEL: EDIT THRESHOLD -->
+    <div class="panel-overlay" id="threshold-overlay"></div>
+    <div class="bottom-panel" id="threshold-panel">
+        <div class="panel-handle"></div>
+        <div class="panel-header">
+            <div class="panel-title">Edit Batas Warning</div>
+            <button class="btn-close-panel" id="btn-close-threshold">✕</button>
+        </div>
+        <div class="panel-body">
+            <div id="threshold-item-nama" style="font-size:13px;color:var(--muted);margin-bottom:12px;"></div>
+            <div class="form-group" style="margin-bottom:20px;">
+                <label class="form-label">Batas minimum stok</label>
+                <input type="number" class="form-control font-mono" id="threshold-input"
+                    min="0" placeholder="10" style="font-size:18px;text-align:center;" />
+            </div>
+            <button class="btn btn-primary btn-full btn-lg" id="btn-konfirmasi-threshold">
+                Simpan
+            </button>
+            <button class="btn btn-secondary btn-full" id="btn-batal-threshold" style="margin-top:8px;">
+                Batal
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL KONFIRMASI RESET -->
+    <div class="panel-overlay" id="reset-overlay"></div>
+    <div class="bottom-panel" id="reset-panel">
+        <div class="panel-handle"></div>
+        <div class="panel-header">
+            <div class="panel-title">Konfirmasi Reset Poin</div>
+            <button class="btn-close-panel" id="btn-close-reset">X</button>
+        </div>
+        <div class="panel-body">
+            <div style="text-align:center;padding:8px 0 20px;">
+                <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+                <div style="font-size:16px;font-weight:700;margin-bottom:6px;">
+                    Reset poin <span id="reset-op-name" style="text-transform:capitalize;color:var(--accent);"></span>?
+                </div>
+                <div style="font-size:13px;color:var(--muted);">
+                    Poin saat ini: <span id="reset-op-poin"
+                        style="font-family:'DM Mono',monospace;font-weight:600;color:var(--ink);"></span>
+                </div>
+                <div style="font-size:12px;color:var(--orange);margin-top:8px;">
+                    Tindakan ini tidak bisa dibatalkan!
+                </div>
+            </div>
+            <button class="btn btn-primary btn-full btn-lg" id="btn-konfirmasi-reset"
+                style="background:var(--orange);border-color:var(--orange);">
+                Ya, Reset Poin
+            </button>
+            <button class="btn btn-secondary btn-full" id="btn-batal-reset" style="margin-top:8px;">
+                Batal
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading & Toast -->
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loading-text">Memproses...</div>
+    </div>
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="app.js"></script>
+    <script>
+
+    // ══ PIN GATE ══════════════════════════════════════════════
+    const PIN_LOCK_KEY  = 'packify_admin_lock';
+    const PIN_FAIL_KEY  = 'packify_admin_fails';
+    const MAX_FAILS     = 3;
+    const LOCK_DURATION = 5 * 60 * 1000; // 5 menit
+
+    let pinBuffer = '';
+
+    function checkLock() {
+        const lock = JSON.parse(localStorage.getItem(PIN_LOCK_KEY) || 'null');
+        if (!lock) return false;
+        if (Date.now() < lock.until) return true;
+        localStorage.removeItem(PIN_LOCK_KEY);
+        localStorage.removeItem(PIN_FAIL_KEY);
+        return false;
+    }
+
+    function getLockRemaining() {
+        const lock = JSON.parse(localStorage.getItem(PIN_LOCK_KEY) || 'null');
+        if (!lock) return 0;
+        return Math.max(0, Math.ceil((lock.until - Date.now()) / 1000));
+    }
+
+    function pinInput(digit) {
+        if (checkLock()) return;
+        if (pinBuffer.length >= 4) return;
+        pinBuffer += digit;
+        updateDots();
+        if (pinBuffer.length === 4) setTimeout(checkPin, 150);
+    }
+
+    function pinBackspace() {
+        pinBuffer = pinBuffer.slice(0, -1);
+        updateDots();
+    }
+
+    function pinClear() {
+        pinBuffer = '';
+        updateDots();
+    }
+
+    function updateDots(state) {
+        for (let i = 0; i < 4; i++) {
+            const dot = document.getElementById('dot-' + i);
+            dot.className = 'pin-dot';
+            if (state === 'error') dot.classList.add('error');
+            else if (i < pinBuffer.length) dot.classList.add('filled');
+        }
+    }
+
+    function checkPin() {
+        if (pinBuffer === ADMIN_PIN) {
+            localStorage.removeItem(PIN_FAIL_KEY);
+            document.getElementById('pin-gate').classList.add('hidden');
+            document.getElementById('admin-content').style.display = 'block';
+            loadStatistik();
+        } else {
+            const fails = (parseInt(localStorage.getItem(PIN_FAIL_KEY) || '0')) + 1;
+            localStorage.setItem(PIN_FAIL_KEY, fails);
+
+            if (fails >= MAX_FAILS) {
+                localStorage.setItem(PIN_LOCK_KEY, JSON.stringify({ until: Date.now() + LOCK_DURATION }));
+                showLocked();
+            } else {
+                document.getElementById('pin-error').textContent = 'PIN salah! (' + (MAX_FAILS - fails) + 'x lagi dikunci)';
+                document.getElementById('pin-error').classList.remove('d-none');
+                updateDots('error');
+                setTimeout(() => {
+                    pinBuffer = '';
+                    updateDots();
+                    document.getElementById('pin-error').classList.add('d-none');
+                }, 800);
+            }
+        }
+    }
+
+    function showLocked() {
+        const keypad = document.getElementById('pin-keypad');
+        const locked = document.getElementById('pin-locked');
+        keypad.style.opacity = '0.3';
+        keypad.style.pointerEvents = 'none';
+        locked.classList.remove('d-none');
+        const interval = setInterval(() => {
+            const rem = getLockRemaining();
+            if (rem <= 0) {
+                clearInterval(interval);
+                keypad.style.opacity = '';
+                keypad.style.pointerEvents = '';
+                locked.classList.add('d-none');
+                pinBuffer = '';
+                updateDots();
+            } else {
+                const m = Math.floor(rem / 60);
+                const s = rem % 60;
+                locked.textContent = 'Terkunci ' + m + ':' + String(s).padStart(2,'0') + ' lagi';
+            }
+        }, 1000);
+    }
+
+    function lockAdmin() {
+        document.getElementById('pin-gate').classList.remove('hidden');
+        document.getElementById('admin-content').style.display = 'none';
+        pinBuffer = '';
+        updateDots();
+    }
+
+    // Cek lock on load
+    if (checkLock()) showLocked();
+
+    // ══ TABS ══════════════════════════════════════════════════
+    function switchTab(name, btn) {
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.admin-tab').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + name).style.display = 'block';
+        btn.classList.add('active');
+
+        if (name === 'statistik') loadStatistik();
+        if (name === 'redeem')    loadRedeemHistory();
+        if (name === 'reward')    renderRewardCatalog();
+        if (name === 'stok')      loadStok();
+        if (name === 'reset')     renderResetList();
+    }
+
+    // ══ STATISTIK ════════════════════════════════════════════
+    async function loadStatistik() {
+        const list = document.getElementById('statistik-list');
+        list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);">Memuat data...</div>';
+
+        try {
+            const res    = await fetch(LINK_GAS + '?action=get_gamif&key=' + API_KEY);
+            const json   = await res.json();
+            const gamif  = (json.status === 'success') ? json.data : {};
+
+            const sessions = loadAllSessions();
+
+            list.innerHTML = OPERATORS.map(op => {
+                const d       = gamif[op] || {};
+                const poin    = d.poinTotal     || 0;
+                const streak  = d.streak        || 0;
+                const badges  = d.badges        || [];
+                const selesai = sessions.filter(s =>
+                    getOperator(s) === op && ['DONE','SYNCED'].includes(getStatus(s))
+                ).length;
+
+                const badgeList = (typeof BADGES !== 'undefined') ? BADGES : [];
+                const badgeHTML = badges.length
+                    ? badges.map(id => {
+                        const b = badgeList.find(x => x.id === id);
+                        return b ? '<span title="' + b.label + '" style="font-size:18px;">' + b.icon + '</span>' : '';
+                    }).join('')
+                    : '<span style="font-size:12px;color:var(--muted);">Belum ada</span>';
+
+                return '<div class="operator-card">' +
+                    '<div class="operator-card-header">' +
+                        '<div style="display:flex;align-items:center;gap:10px;">' +
+                            '<div class="operator-avatar">' + op.charAt(0).toUpperCase() + '</div>' +
+                            '<div class="operator-name">' + op + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="operator-stats">' +
+                        '<div class="op-stat">' +
+                            '<div class="op-stat-val">' + poin + '</div>' +
+                            '<div class="op-stat-label">Total Poin</div>' +
+                        '</div>' +
+                        '<div class="op-stat">' +
+                            '<div class="op-stat-val">' + streak + '</div>' +
+                            '<div class="op-stat-label">Streak</div>' +
+                        '</div>' +
+                        '<div class="op-stat">' +
+                            '<div class="op-stat-val">' + selesai + '</div>' +
+                            '<div class="op-stat-label">Total Packing</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Badge</div>' +
+                    '<div class="op-badges">' + badgeHTML + '</div>' +
+                '</div>';
+            }).join('');
+
+        } catch (e) {
+            list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--orange);">Gagal memuat data: ' + e.message + '</div>';
+        }
+    }
+
+    // ══ RIWAYAT REDEEM ═══════════════════════════════════════
+    function loadRedeemHistory() {
+        const REDEEM_KEY = 'packify_redeem_history';
+        let all = [];
+        try { all = JSON.parse(localStorage.getItem(REDEEM_KEY)) || []; } catch(e) {}
+
+        const el = document.getElementById('redeem-admin-list');
+        if (!all.length) {
+            el.innerHTML = '<div style="padding:16px;text-align:center;font-size:13px;color:var(--muted);">Belum ada riwayat redeem</div>';
+            return;
+        }
+
+        el.innerHTML = all.slice().reverse().map(h =>
+            '<div class="redeem-admin-row">' +
+                '<span class="redeem-admin-icon">' + h.icon + '</span>' +
+                '<div class="redeem-admin-info">' +
+                    '<div class="redeem-admin-nama">' + h.nama + '</div>' +
+                    '<div class="redeem-admin-meta">' + h.operator + ' &middot; ' + h.waktu + '</div>' +
+                '</div>' +
+                '<span class="redeem-admin-poin">-' + h.poin + ' poin</span>' +
+            '</div>'
+        ).join('');
+    }
+
+    // ══ REWARD CATALOG ════════════════════════════════════════
+    // Katalog tersimpan di localStorage agar bisa diedit tanpa deploy ulang
+    const CATALOG_KEY = 'packify_reward_catalog';
+
+    function loadCatalog() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(CATALOG_KEY));
+            return saved || REWARD_CATALOG;
+        } catch(e) { return REWARD_CATALOG; }
+    }
+
+    function saveCatalog(catalog) {
+        localStorage.setItem(CATALOG_KEY, JSON.stringify(catalog));
+    }
+
+    function renderRewardCatalog() {
+        const catalog = loadCatalog();
+        const list    = document.getElementById('reward-catalog-list');
+
+        if (!catalog.length) {
+            list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);">Catalog kosong</div>';
+            return;
+        }
+
+        list.innerHTML = catalog.map((r, idx) => {
+            const stokCls = r.stok <= 0 ? 'empty' : (r.stok <= 2 ? 'low' : '');
+            return '<div class="reward-edit-card">' +
+                '<span class="reward-edit-icon">' + r.icon + '</span>' +
+                '<div class="reward-edit-info">' +
+                    '<div class="reward-edit-nama">' + r.nama + '</div>' +
+                    '<div class="reward-edit-meta">' + r.poin + ' poin</div>' +
+                '</div>' +
+                '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">' +
+                    '<span class="stok-badge ' + stokCls + '">Stok: ' + r.stok + '</span>' +
+                    '<div style="display:flex;gap:6px;">' +
+                        '<button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;"' +
+                            ' onclick="editStok(' + idx + ')">Edit Stok</button>' +
+                        '<button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;color:var(--orange);border-color:var(--orange);"' +
+                            ' onclick="hapusReward(' + idx + ')">Hapus</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    function tambahReward() {
+        const icon  = document.getElementById('new-icon').value.trim();
+        const nama  = document.getElementById('new-nama').value.trim();
+        const poin  = parseInt(document.getElementById('new-poin').value) || 0;
+        const stok  = parseInt(document.getElementById('new-stok').value) || 0;
+
+        if (!nama || !poin) { showToast('Nama dan poin wajib diisi', 'error'); return; }
+
+        const catalog = loadCatalog();
+        catalog.push({
+            id:   nama.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now(),
+            icon: icon || '🎁',
+            nama, poin, stok,
+        });
+        saveCatalog(catalog);
+
+        document.getElementById('new-icon').value = '';
+        document.getElementById('new-nama').value = '';
+        document.getElementById('new-poin').value = '';
+        document.getElementById('new-stok').value = '';
+
+        renderRewardCatalog();
+        showToast('Reward ' + nama + ' ditambahkan!', 'success');
+    }
+
+    function editStok(idx) {
+        const catalog = loadCatalog();
+        const r       = catalog[idx];
+        const newStok = prompt('Stok baru untuk ' + r.nama + ':', r.stok);
+        if (newStok === null) return;
+        const n = parseInt(newStok);
+        if (isNaN(n) || n < 0) { showToast('Stok tidak valid', 'error'); return; }
+        catalog[idx].stok = n;
+        saveCatalog(catalog);
+        renderRewardCatalog();
+        showToast('Stok ' + r.nama + ' diupdate ke ' + n, 'success');
+    }
+
+    function hapusReward(idx) {
+        const catalog = loadCatalog();
+        const r       = catalog[idx];
+        if (!confirm('Hapus reward "' + r.nama + '"?')) return;
+        catalog.splice(idx, 1);
+        saveCatalog(catalog);
+        renderRewardCatalog();
+        showToast('Reward dihapus', 'success');
+    }
+
+    // ══ RESET POIN ═══════════════════════════════════════════
+    let resetTarget = null;
+
+    function renderResetList() {
+        const list = document.getElementById('reset-list');
+
+        // Ambil data poin dari cache
+        const gamif = loadGamifCache();
+
+        list.innerHTML = OPERATORS.map(op => {
+            const poin = gamif['poin_' + op] || 0;
+            return '<div class="operator-card" style="display:flex;align-items:center;gap:12px;">' +
+                '<div class="operator-avatar">' + op.charAt(0).toUpperCase() + '</div>' +
+                '<div style="flex:1;">' +
+                    '<div class="operator-name">' + op + '</div>' +
+                    '<div style="font-family:\'DM Mono\',monospace;font-size:13px;color:var(--muted);">' + poin + ' poin</div>' +
+                '</div>' +
+                '<button class="btn btn-secondary" style="color:var(--orange);border-color:var(--orange);font-size:12px;"' +
+                    ' onclick="openResetPanel(\'' + op + '\',' + poin + ')">Reset</button>' +
+            '</div>';
+        }).join('');
+    }
+
+    const resetPanel   = document.getElementById('reset-panel');
+    const resetOverlay = document.getElementById('reset-overlay');
+
+    function openResetPanel(op, poin) {
+        resetTarget = op;
+        document.getElementById('reset-op-name').textContent = op;
+        document.getElementById('reset-op-poin').textContent = poin + ' poin';
+        resetPanel.classList.add('show');
+        resetOverlay.classList.add('show');
+    }
+
+    function closeResetPanel() {
+        resetPanel.classList.remove('show');
+        resetOverlay.classList.remove('show');
+        resetTarget = null;
+    }
+
+    document.getElementById('btn-close-reset').addEventListener('click', closeResetPanel);
+    document.getElementById('btn-batal-reset').addEventListener('click', closeResetPanel);
+    resetOverlay.addEventListener('click', closeResetPanel);
+
+    document.getElementById('btn-konfirmasi-reset').addEventListener('click', async function() {
+        if (!resetTarget) return;
+        const op = resetTarget;
+        closeResetPanel();
+        setLoading(true, 'Mereset poin ' + op + '...');
+
+        try {
+            const params = new URLSearchParams({ action: 'reset_poin', key: API_KEY, operator: op });
+            const res    = await fetch(LINK_GAS, { method: 'POST', body: params });
+            const data   = await res.json();
+            if (data.status !== 'success') throw new Error(data.message || 'Gagal reset');
+
+            // Update cache lokal
+            const gamif = loadGamifCache();
+            gamif['poin_' + op] = 0;
+            saveGamifCache(gamif);
+
+            renderResetList();
+            showToast('Poin ' + op + ' berhasil direset!', 'success');
+        } catch(e) {
+            showToast('Gagal reset: ' + e.message, 'error');
+        } finally {
+            setLoading(false);
+        }
+    });
+
+    // ══ STOK ASSET ═══════════════════════════════════════════
+
+    let stokData      = [];
+    let restockTarget = null;
+    let threshTarget  = null;
+    let restockQty    = 1;
+
+    // Format tampilan stok tergantung satuan
+    function formatStok(item) {
+        if (item.satuan === 'pcs' && item.id === 'thermal') {
+            // Thermal: tampilkan dalam box/pack/pcs
+            const pcs  = item.stok;
+            const pack = Math.floor(pcs / 10);
+            const sisa = pcs % 10;
+            if (pack >= 10) {
+                const box  = Math.floor(pack / 10);
+                const sp   = pack % 10;
+                return box + ' box' + (sp ? ' ' + sp + ' pack' : '') + (sisa ? ' ' + sisa + ' pcs' : '');
+            }
+            return pack > 0 ? pack + ' pack' + (sisa ? ' ' + sisa + ' pcs' : '') : pcs + ' pcs';
+        }
+        return item.stok + ' ' + item.satuan;
+    }
+
+    function stokClass(item) {
+        if (item.stok <= 0)              return 'empty';
+        if (item.stok <= item.threshold) return 'low';
+        return 'ok';
+    }
+
+    async function loadStok() {
+        const list = document.getElementById('stok-list');
+        list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);">Memuat...</div>';
+        try {
+            const res  = await fetch(`${LINK_GAS}?action=get_stock&key=${API_KEY}`, { redirect: 'follow' });
+            const data = await res.json();
+            if (data.status !== 'success') throw new Error(data.message);
+            stokData = data.data || [];
+            renderStok();
+        } catch(e) {
+            list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--orange);">Gagal load: ' + e.message + '</div>';
+        }
+    }
+
+    function renderStok() {
+        // Warning banner
+        const warnings = stokData.filter(i => i.stok <= i.threshold);
+        const warnEl   = document.getElementById('stok-warnings');
+        if (warnings.length) {
+            warnEl.innerHTML = '<div style="background:#fff3e0;border:1.5px solid var(--orange);border-radius:var(--radius);padding:12px 14px;margin-bottom:4px;">' +
+                '<div style="font-size:12px;font-weight:700;color:var(--orange);margin-bottom:6px;">' +
+                '<i class="bi bi-exclamation-triangle-fill"></i> ' + warnings.length + ' item stok menipis / habis</div>' +
+                warnings.map(i => '<div style="font-size:12px;color:var(--ink);padding:2px 0;">' +
+                    '· ' + i.nama + ' — <b>' + formatStok(i) + '</b>' +
+                    (i.stok <= 0 ? ' <span style="color:#c62828;">HABIS</span>' : '') +
+                '</div>').join('') +
+            '</div>';
+        } else {
+            warnEl.innerHTML = '<div style="background:var(--accent-lt);border-radius:var(--radius);padding:10px 14px;margin-bottom:4px;font-size:12px;color:var(--accent);font-weight:600;">' +
+                '<i class="bi bi-check-circle-fill"></i> Semua stok aman</div>';
+        }
+
+        // List
+        const list = document.getElementById('stok-list');
+        list.innerHTML = stokData.map((item, idx) => {
+            const cls = stokClass(item);
+            return '<div class="stock-item">' +
+                '<div class="stock-item-info">' +
+                    '<div class="stock-item-nama">' + item.nama + '</div>' +
+                    '<div class="stock-item-satuan">min: ' + item.threshold + ' ' + item.satuan + '</div>' +
+                '</div>' +
+                '<div class="stock-item-right">' +
+                    '<span class="stock-val ' + cls + '">' + formatStok(item) + '</span>' +
+                    '<div class="stock-actions">' +
+                        '<button class="btn btn-secondary" style="padding:3px 9px;font-size:11px;"' +
+                            ' onclick="openThreshold(' + idx + ')"><i class="bi bi-sliders"></i></button>' +
+                        '<button class="btn btn-primary" style="padding:3px 9px;font-size:11px;"' +
+                            ' onclick="openRestock(' + idx + ')"><i class="bi bi-plus-lg"></i> Restock</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    // ── Restock Panel ─────────────────────────────────────────
+    function openRestock(idx) {
+        restockTarget = stokData[idx];
+        restockQty    = 1;
+        document.getElementById('restock-title').textContent     = 'Restock — ' + restockTarget.nama;
+        document.getElementById('restock-item-nama').textContent = 'Stok saat ini: ' + formatStok(restockTarget);
+        document.getElementById('restock-qty').textContent       = restockQty;
+
+        // Info konversi thermal
+        const infoEl = document.getElementById('restock-satuan-info');
+        if (restockTarget.id === 'thermal') {
+            infoEl.textContent = '1 pack = 10 pcs · 1 box = 10 pack (100 pcs)';
+        } else {
+            infoEl.textContent = 'Satuan: ' + restockTarget.satuan;
+        }
+
+        document.getElementById('restock-panel').classList.add('show');
+        document.getElementById('restock-overlay').classList.add('show');
+    }
+
+    function adjustQty(delta) {
+        restockQty = Math.max(1, restockQty + delta);
+        document.getElementById('restock-qty').textContent = restockQty;
+    }
+
+    function closeRestock() {
+        document.getElementById('restock-panel').classList.remove('show');
+        document.getElementById('restock-overlay').classList.remove('show');
+        restockTarget = null;
+    }
+
+    document.getElementById('btn-close-restock').addEventListener('click', closeRestock);
+    document.getElementById('btn-batal-restock').addEventListener('click', closeRestock);
+    document.getElementById('restock-overlay').addEventListener('click', closeRestock);
+
+    document.getElementById('btn-konfirmasi-restock').addEventListener('click', async function() {
+        if (!restockTarget) return;
+        const item   = restockTarget;
+        const jumlah = restockQty;
+        closeRestock();
+        setLoading(true, 'Menambah stok ' + item.nama + '...');
+        try {
+            const params = new URLSearchParams({ action: 'restock', key: API_KEY, item_id: item.id, jumlah });
+            const res    = await fetch(LINK_GAS, { method: 'POST', body: params, redirect: 'follow' });
+            const data   = await res.json();
+            if (data.status !== 'success') throw new Error(data.message);
+            stokData = data.data;
+            renderStok();
+            showToast('Stok ' + item.nama + ' +' + jumlah + ' ' + item.satuan, 'success');
+        } catch(e) {
+            showToast('Gagal restock: ' + e.message, 'error');
+        } finally {
+            setLoading(false);
+        }
+    });
+
+    // ── Threshold Panel ───────────────────────────────────────
+    function openThreshold(idx) {
+        threshTarget = stokData[idx];
+        document.getElementById('threshold-item-nama').textContent =
+            threshTarget.nama + ' — batas warning saat ini: ' + threshTarget.threshold + ' ' + threshTarget.satuan;
+        document.getElementById('threshold-input').value = threshTarget.threshold;
+        document.getElementById('threshold-panel').classList.add('show');
+        document.getElementById('threshold-overlay').classList.add('show');
+    }
+
+    function closeThreshold() {
+        document.getElementById('threshold-panel').classList.remove('show');
+        document.getElementById('threshold-overlay').classList.remove('show');
+        threshTarget = null;
+    }
+
+    document.getElementById('btn-close-threshold').addEventListener('click', closeThreshold);
+    document.getElementById('btn-batal-threshold').addEventListener('click', closeThreshold);
+    document.getElementById('threshold-overlay').addEventListener('click', closeThreshold);
+
+    document.getElementById('btn-konfirmasi-threshold').addEventListener('click', async function() {
+        if (!threshTarget) return;
+        const val = parseInt(document.getElementById('threshold-input').value);
+        if (isNaN(val) || val < 0) { showToast('Nilai tidak valid', 'error'); return; }
+        const item = threshTarget;
+        closeThreshold();
+        setLoading(true, 'Menyimpan threshold...');
+        try {
+            const params = new URLSearchParams({ action: 'update_stock', key: API_KEY, item_id: item.id, threshold: val });
+            const res    = await fetch(LINK_GAS, { method: 'POST', body: params, redirect: 'follow' });
+            const data   = await res.json();
+            if (data.status !== 'success') throw new Error(data.message);
+            stokData = data.data;
+            renderStok();
+            showToast('Threshold ' + item.nama + ' → ' + val, 'success');
+        } catch(e) {
+            showToast('Gagal simpan: ' + e.message, 'error');
+        } finally {
+            setLoading(false);
+        }
+    });
+
+    </script>
+</body>
+</html>

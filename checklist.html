@@ -8,10 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-</head>
-<body>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
 
-    <!-- ══ FASE 1: STEP-BY-STEP INPUT ══════════════════════════ -->
     <div id="phase-input" class="page-transition-wrap">
         <header class="app-header">
             <button class="btn-back" id="btn-back-step">←</button>
@@ -66,19 +65,19 @@
                 </p>
                 <div class="preset-grid" id="platform-grid">
                     <button class="preset-card" data-value="Aplikasi">
-                        <span class="preset-icon">📱</span>
+                        <i class="bi bi-phone-fill" style="font-size:32px;color:var(--accent);"></i>
                         <span class="preset-label">Aplikasi</span>
                     </button>
                     <button class="preset-card" data-value="TikTok">
-                        <span class="preset-icon">🎵</span>
+                        <i class="bi bi-music-note-beamed" style="font-size:32px;color:var(--accent);"></i>
                         <span class="preset-label">TikTok</span>
                     </button>
                     <button class="preset-card" data-value="Shopee">
-                        <span class="preset-icon">🛍️</span>
+                        <i class="bi bi-shop" style="font-size:32px;color:var(--accent);"></i>
                         <span class="preset-label">Shopee</span>
                     </button>
                     <button class="preset-card" data-value="Retur">
-                        <span class="preset-icon">🔄</span>
+                        <i class="bi bi-arrow-return-left" style="font-size:32px;color:var(--accent);"></i>
                         <span class="preset-label">Retur</span>
                     </button>
                 </div>
@@ -118,7 +117,7 @@
                         <div style="font-weight:700;font-size:15px;" id="ck-penerima">—</div>
                         <div style="font-size:12px;color:var(--muted);" id="ck-detail">—</div>
                     </div>
-                    <span class="poin-chip" id="ck-poin">⭐ 0 poin</span>
+                    <span class="poin-chip" id="ck-poin"><i class="bi bi-star-fill" style="font-size:11px;"></i> 0 poin</span>
                 </div>
                 <!-- Progress -->
                 <div style="padding:0 16px 14px;">
@@ -229,9 +228,15 @@
     };
 
     const JENIS_ICON = {
-        T1: '📦', T3: '📦', M3: '📦',
-        ARRANET: '🔄', USER: '👤', ARAHNETS: '🔄', MPN: '🏷️',
-        Thermal: '🧾', Kaos: '👕',
+        T1:       'bi bi-box-seam-fill',
+        T3:       'bi bi-box-seam-fill',
+        M3:       'bi bi-box-seam-fill',
+        ARRANET:  'bi bi-arrow-return-left',
+        USER:     'bi bi-person-fill',
+        ARAHNETS: 'bi bi-arrow-return-left',
+        MPN:      'bi bi-tag-fill',
+        Thermal:  'bi bi-receipt',
+        Kaos:     'bi bi-person-standing',
     };
 
     document.querySelectorAll('#platform-grid .preset-card').forEach(card => {
@@ -244,7 +249,7 @@
             const options   = JENIS_BY_PLATFORM[val] || [];
             jenisGrid.innerHTML = options.map(j => `
                 <button class="preset-card" data-value="${j}">
-                    <span class="preset-icon">${JENIS_ICON[j] || '📦'}</span>
+                    <${JENIS_ICON[j] || 'bi bi-box-seam-fill'} style="font-size:32px;color:var(--accent);"></${JENIS_ICON[j] || 'bi bi-box-seam-fill'}>
                     <span class="preset-label">${j}</span>
                 </button>
             `).join('');
@@ -297,7 +302,7 @@
         document.getElementById('ck-penerima').textContent = session.shipping.penerima;
         document.getElementById('ck-detail').textContent   =
             `${session.shipping.jenis} · ${session.shipping.platform} · ${session.shipping.petugas}`;
-        document.getElementById('ck-poin').textContent = `⭐ ${session.poin} poin`;
+        document.getElementById('ck-poin').innerHTML = `<i class="bi bi-star-fill" style="font-size:11px;"></i> ${session.poin} poin`;
 
         // Generate checklist items
         const items = generateChecklist(session.shipping.jenis);
@@ -330,10 +335,10 @@
                 </div>
                 ${item.photoPreview
                     ? `<img class="checklist-thumb" src="${item.photoPreview}" alt="${item.label}" />`
-                    : `<div class="checklist-thumb" style="background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:20px;">📷</div>`
+                    : `<div class="checklist-thumb" style="background:var(--paper);display:flex;align-items:center;justify-content:center;"><i class="bi bi-camera" style="font-size:22px;color:var(--muted);"></i></div>`
                 }
                 <label class="btn-photo ${isDone ? 'done' : isFailed ? 'failed' : ''}" title="${isFailed ? 'Retry foto' : 'Ambil foto'}">
-                    ${isDone ? '✓' : isFailed ? '🔄' : '📷'}
+                    ${isDone ? '<i class="bi bi-check-lg" style="font-size:18px;color:var(--accent);"></i>' : isFailed ? '<i class="bi bi-arrow-clockwise" style="font-size:18px;"></i>' : '<i class="bi bi-camera" style="font-size:18px;"></i>'}
                     <input type="file" accept="image/*" capture="environment"
                         style="display:none" data-idx="${idx}" class="photo-input" />
                 </label>
@@ -478,6 +483,10 @@
             // Sync ke server di background
             syncSession(loadCurrentSession());
 
+            // Kurangi stok asset di background (non-blocking)
+            const jenisPacking = currentSession?.shipping?.jenis || '';
+            deductStockAfterPacking(jenisPacking);
+
             clearCurrentSession();
             showToast(`✅ Sesi tersimpan! +${currentSession.poin} poin`, 'success');
 
@@ -494,6 +503,31 @@
     if (existingSession && existingSession.checklist?.length > 0) {
         renderChecklist(existingSession);
     }
+
+    // ── Beforeunload: cegah tutup tab di tengah checklist ────
+    // Aktif hanya saat fase checklist sedang berjalan
+    function isChecklistActive() {
+        return currentSession !== null &&
+               !document.getElementById('phase-checklist').classList.contains('d-none');
+    }
+
+    window.addEventListener('beforeunload', e => {
+        if (sessionSaved) return;
+        if (!isChecklistActive()) return;
+        const hasProgress = currentSession?.checklist?.some(i => i.photoId || i.hasPending);
+        if (!hasProgress) return;
+        e.preventDefault();
+        e.returnValue = '';
+    });
+
+    // Matikan warning setelah sesi berhasil disimpan
+    // (navigateTo pakai timeout, jadi set flag dulu)
+    let sessionSaved = false;
+    const origBeforeunload = window.onbeforeunload;
+    document.getElementById('btn-submit').addEventListener('click', () => {
+        // Flag ini dicek di beforeunload — kalau sudah saved, skip warning
+        setTimeout(() => { sessionSaved = true; }, 100);
+    }, true); // capture phase — jalan sebelum handler submit utama
     </script>
 
 </body>

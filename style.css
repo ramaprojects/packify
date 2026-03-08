@@ -31,6 +31,73 @@
     --header-h:  56px;
 }
 
+/* ─── DARK MODE VARIABLES ───────────────── */
+[data-theme="dark"] {
+    --ink:       #EDECEA;
+    --paper:     #1A1A18;
+    --white:     #242422;
+    --accent:    #52B788;
+    --accent-lt: #1A3328;
+    --accent-2:  #52B788;
+    --orange:    #F4A261;
+    --orange-lt: #2E1F14;
+    --muted:     #888880;
+    --border:    #2E2E2C;
+    --red:       #E05C4B;
+    --red-lt:    #2E1410;
+
+    --shadow-sm: 0 1px 4px rgba(0,0,0,0.3);
+    --shadow:    0 4px 16px rgba(0,0,0,0.4);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+/* Komponen yang pakai warna hardcoded — override di dark mode */
+[data-theme="dark"] .poin-chip {
+    background: #2A2210;
+    border-color: #6B5500;
+    color: #FFCC44;
+}
+[data-theme="dark"] .streak-chip {
+    background: #2A1A10;
+    border-color: #8B4000;
+    color: #FF9955;
+}
+[data-theme="dark"] .checklist-item.done {
+    background: #1A2E22;
+    border-color: var(--accent-2);
+}
+[data-theme="dark"] .badge-item.unlocked {
+    border-color: #6B5500;
+    background: #201A00;
+}
+[data-theme="dark"] .loading-overlay {
+    background: rgba(0,0,0,0.85);
+}
+[data-theme="dark"] .login-page::before {
+    opacity: 0.15;
+}
+[data-theme="dark"] .rank-1 { background: #5C4500; color: #FFD700; }
+[data-theme="dark"] .rank-2 { background: #2E2E2E; color: #C0C0C0; }
+[data-theme="dark"] .rank-3 { background: #3A2010; color: #CD7F32; }
+[data-theme="dark"] .rank-n { background: var(--paper); color: var(--muted); }
+[data-theme="dark"] .badge-gray   { background: #2A2A28; color: var(--muted); }
+[data-theme="dark"] .preset-card:active,
+[data-theme="dark"] .preset-card.selected {
+    background: var(--accent-lt);
+    border-color: var(--accent);
+}
+[data-theme="dark"] .date-group-header.open { background: #1E1E1C; }
+[data-theme="dark"] .date-group-body        { background: #1A1A18; }
+[data-theme="dark"] .btn-secondary {
+    background: #2A2A28;
+    border-color: var(--border);
+}
+[data-theme="dark"] .btn-secondary:hover  { background: #333331; }
+[data-theme="dark"] .btn-primary:disabled { background: #2A3D33; color: #4a6b58; }
+[data-theme="dark"] .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888880' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
 /* ─── RESET ─────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -150,6 +217,39 @@ h1, h2, h3, h4, h5, h6 { font-weight: 700; line-height: 1.25; }
 
 .nav-item.active .nav-icon {
     transform: scale(1.15);
+}
+
+/* FAB — tombol aksi utama di tengah navbar */
+.nav-item.nav-fab {
+    flex:      0 0 64px;
+    transform: translateY(-14px);
+    color:     var(--white);
+}
+.nav-item.nav-fab .nav-fab-circle {
+    width:      56px;
+    height:     56px;
+    border-radius: 50%;
+    background: var(--accent);
+    display:    flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(45,106,79,0.45);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.2s;
+}
+.nav-item.nav-fab:active .nav-fab-circle {
+    transform:  scale(0.92);
+    box-shadow: 0 2px 8px rgba(45,106,79,0.35);
+}
+.nav-item.nav-fab .nav-icon {
+    font-size: 26px;
+    line-height: 1;
+}
+.nav-item.nav-fab span:not(.nav-fab-circle):not(.nav-icon) {
+    font-size:   10px;
+    font-weight: 600;
+    color:       var(--accent);
+    margin-top:  2px;
 }
 
 .nav-badge {

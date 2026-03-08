@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Packify -- Profil</title>
+    <script src="auth-guard.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    
+    
+    <style>
+        .profile-hero {
+            background: linear-gradient(135deg, var(--accent) 0%, #1a4731 100%);
+            border-radius: var(--radius);
+            padding: 24px 20px 20px;
+            color: #fff;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        .profile-hero::before {
+            content: '';
+            position: absolute;
+            right: -30px; top: -30px;
+            width: 130px; height: 130px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
+        }
+        .profile-hero::after {
+            content: '';
+            position: absolute;
+            right: 30px; bottom: -40px;
+            width: 90px; height: 90px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 50%;
+        }
+        .profile-avatar {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px;
+            margin-bottom: 12px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .profile-name {
+            font-size: 20px; font-weight: 700;
+            text-transform: capitalize;
+            margin-bottom: 2px;
+        }
+        .profile-role { font-size: 12px; opacity: 0.7; margin-bottom: 16px; }
+        .profile-stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+        .profile-stat {
+            background: rgba(255,255,255,0.12);
+            border-radius: 10px;
+            padding: 10px 8px;
+            text-align: center;
+        }
+        .profile-stat-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 20px; font-weight: 500; line-height: 1;
+        }
+        .profile-stat-label { font-size: 10px; opacity: 0.75; margin-top: 3px; }
+
+        .reward-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+        .reward-card {
+            background: var(--white);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 12px;
+            display: flex; flex-direction: column;
+            align-items: center; gap: 6px;
+            cursor: pointer;
+            transition: border-color 0.15s, transform 0.15s;
+            position: relative;
+        }
+        .reward-card:active { transform: scale(0.97); }
+        .reward-card.affordable { border-color: var(--accent); }
+        .reward-card.soldout { opacity: 0.45; cursor: not-allowed; }
+        .reward-icon { font-size: 32px; line-height: 1; }
+        .reward-nama { font-size: 13px; font-weight: 600; text-align: center; }
+        .reward-poin { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); font-weight: 500; }
+        .reward-stok { font-size: 10px; color: var(--muted); }
+        .reward-soldout-badge {
+            position: absolute; top: 8px; right: 8px;
+            background: var(--border); color: var(--muted);
+            font-size: 9px; font-weight: 700;
+            padding: 2px 6px; border-radius: 10px;
+            display: none;
+        }
+        .reward-card.soldout .reward-soldout-badge { display: block; }
+
+        .redeem-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .redeem-row:last-child { border-bottom: none; }
+        .redeem-icon { font-size: 24px; flex-shrink: 0; }
+        .redeem-info { flex: 1; }
+        .redeem-nama { font-size: 14px; font-weight: 600; }
+        .redeem-time { font-size: 11px; color: var(--muted); margin-top: 1px; }
+        .redeem-poin { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--orange); font-weight: 500; }
+    </style>
+</head>
+<body>
+
+    <header class="app-header">
+        <div style="width:36px"></div>
+        <h6>Profil</h6>
+        <button id="btn-theme" title="Ganti tema"
+            style="width:36px;height:36px;border:1px solid var(--border);
+                   background:var(--white);border-radius:var(--radius-sm);
+                   cursor:pointer;display:flex;align-items:center;
+                   justify-content:center;transition:background 0.15s;">
+            <i class="bi bi-moon-fill" style="font-size:18px;" id="theme-icon"></i>
+        </button>
+    </header>
+
+    <div class="page-content page-transition-wrap">
+
+        <!-- PROFILE HERO -->
+        <div class="profile-hero">
+            <div class="profile-avatar" id="profile-avatar">?</div>
+            <div class="profile-name" id="profile-name">--</div>
+            <div class="profile-role">Operator Packify</div>
+            <div class="profile-stats-row">
+                <div class="profile-stat">
+                    <div class="profile-stat-val" id="stat-poin">--</div>
+                    <div class="profile-stat-label">Total Poin</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-val" id="stat-streak">--</div>
+                    <div class="profile-stat-label">Hari Streak</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-val" id="stat-selesai">--</div>
+                    <div class="profile-stat-label">Total Packing</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BADGE -->
+        <div class="section-title">Badge</div>
+        <div class="card" style="margin-bottom:24px;padding:16px;">
+            <div id="badge-wrap" style="display:flex;flex-wrap:wrap;gap:8px;">
+                <span style="font-size:13px;color:var(--muted);">Belum ada badge</span>
+            </div>
+        </div>
+
+        <!-- REDEEM CENTER -->
+        <div class="section-title">Redeem Center</div>
+        <div style="font-size:12px;color:var(--muted);margin:-8px 0 12px;">
+            Tukar poin kamu dengan jajanan!
+        </div>
+        <div class="reward-grid" id="reward-grid"></div>
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin:8px 0 24px;">
+            Reward dikonfirmasi owner via WhatsApp
+        </div>
+
+        <!-- RIWAYAT REDEEM -->
+        <div class="section-title">Riwayat Redeem</div>
+        <div class="card" style="margin-bottom:24px;">
+            <div id="redeem-history-list">
+                <div style="padding:16px;text-align:center;font-size:13px;color:var(--muted);">
+                    Belum ada riwayat
+                </div>
+            </div>
+        </div>
+
+        <!-- LOGOUT -->
+        <button class="btn btn-full" id="btn-logout"
+            style="margin-bottom:40px;background:var(--red-lt);color:var(--red);
+                   border:1.5px solid var(--red);font-weight:600;padding:14px;gap:8px;">
+            <i class="bi bi-box-arrow-right" style="font-size:18px;"></i>
+            Keluar / Ganti Operator
+        </button>
+
+    </div>
+
+    <!-- MODAL KONFIRMASI REDEEM -->
+    <div class="panel-overlay" id="redeem-overlay"></div>
+    <div class="bottom-panel" id="redeem-panel">
+        <div class="panel-handle"></div>
+        <div class="panel-header">
+            <div class="panel-title">Konfirmasi Redeem</div>
+            <button class="btn-close-panel" id="btn-close-redeem">X</button>
+        </div>
+        <div class="panel-body">
+            <div style="text-align:center;padding:8px 0 20px;">
+                <div id="redeem-modal-icon" style="font-size:52px;line-height:1;margin-bottom:12px;"></div>
+                <div id="redeem-modal-nama" style="font-size:18px;font-weight:700;margin-bottom:6px;"></div>
+                <div style="font-size:13px;color:var(--muted);">Kamu akan menukar</div>
+                <div id="redeem-modal-poin"
+                    style="font-family:'DM Mono',monospace;font-size:28px;font-weight:500;
+                           color:var(--accent);margin:4px 0 2px;"></div>
+                <div style="font-size:12px;color:var(--muted);">
+                    Sisa poin setelah redeem:
+                    <span id="redeem-modal-sisa"
+                        style="font-family:'DM Mono',monospace;font-weight:600;color:var(--ink);">--</span>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-full btn-lg" id="btn-konfirmasi-redeem">
+                Konfirmasi &amp; Kirim ke Owner
+            </button>
+            <button class="btn btn-secondary btn-full" id="btn-batal-redeem" style="margin-top:8px;">
+                Batal
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading & Toast -->
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loading-text">Memproses...</div>
+    </div>
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Bottom Nav -->
+    <nav id="bottom-nav-root"></nav>
+
+    <script src="app.js"></script>
+    <script>
+
+    const operator = localStorage.getItem(OPERATOR_KEY) || '';
+    let currentPoin = 0;
+    let selectedReward = null;
+
+    const REDEEM_KEY = 'packify_redeem_history';
+
+    function loadRedeemHistory() {
+        try { return JSON.parse(localStorage.getItem(REDEEM_KEY)) || []; }
+        catch { return []; }
+    }
+    function saveRedeemHistory(list) {
+        localStorage.setItem(REDEEM_KEY, JSON.stringify(list));
+    }
+
+    // ── Load profil ──────────────────────────────────────────
+    function loadProfile() {
+        document.getElementById('profile-name').textContent   = operator || '--';
+        document.getElementById('profile-avatar').textContent =
+            operator ? operator.charAt(0).toUpperCase() : '?';
+
+        const gamif    = loadGamifCache();
+        const sessions = loadAllSessions();
+        const streak   = getStreakLocal(operator);
+        const selesai  = sessions.filter(s =>
+            getOperator(s) === operator && getStatus(s) === STATUS.DONE
+        ).length;
+
+        currentPoin = gamif['poin_' + operator] || 0;
+
+        document.getElementById('stat-poin').textContent    = currentPoin;
+        document.getElementById('stat-streak').textContent  = streak + ' hari';
+        document.getElementById('stat-selesai').textContent = selesai;
+
+        renderBadges(gamif);
+        renderRewardGrid();
+        renderRedeemHistory();
+        fetchGamifProfile();
+    }
+
+    async function fetchGamifProfile() {
+        try {
+            const res  = await fetch(LINK_GAS + '?action=get_gamif&key=' + API_KEY);
+            const json = await res.json();
+            if (json.status !== 'success') return;
+            const data = json.data || {};
+            const op   = data[operator];
+            if (!op) return;
+
+            currentPoin = op.poinTotal || 0;
+            document.getElementById('stat-poin').textContent   = currentPoin;
+            document.getElementById('stat-streak').textContent = (op.streak || 0) + ' hari';
+
+            const gamif = loadGamifCache();
+            gamif['poin_'   + operator] = currentPoin;
+            gamif['streak_' + operator] = op.streak || 0;
+            saveGamifCache(gamif);
+
+            renderBadges({ ['badges_' + operator]: op.badges || [] });
+            renderRewardGrid();
+        } catch (e) {
+            console.warn('Gagal fetch profil:', e);
+        }
+    }
+
+    // ── Badge ─────────────────────────────────────────────────
+    function renderBadges(gamif) {
+        const wrap   = document.getElementById('badge-wrap');
+        const earned = gamif['badges_' + operator] || [];
+        if (!earned.length) {
+            wrap.innerHTML = '<span style="font-size:13px;color:var(--muted);">Belum ada badge</span>';
+            return;
+        }
+        const badgeList = (typeof BADGES !== 'undefined') ? BADGES : [];
+        wrap.innerHTML = earned.map(id => {
+            const b = badgeList.find(x => x.id === id);
+            if (!b) return '';
+            return `<div title="${b.label}" style="display:flex;flex-direction:column;align-items:center;
+                        gap:4px;padding:10px 12px;border-radius:var(--radius);
+                        border:1px solid #FFD166;background:#FFFBEF;min-width:64px;text-align:center;">
+                        <i class="${b.icon}" style="font-size:26px;color:#B8860B;"></i>
+                        <span style="font-size:10px;font-weight:600;color:var(--ink);">${b.label}</span>
+                    </div>`;
+        }).join('');
+    }
+
+    // ── Reward Grid ───────────────────────────────────────────
+    function renderRewardGrid() {
+        const grid = document.getElementById('reward-grid');
+        grid.innerHTML = REWARD_CATALOG.map(function(r) {
+            const canAfford = currentPoin >= r.poin;
+            const soldOut   = r.stok <= 0;
+            const cls       = soldOut ? 'soldout' : (canAfford ? 'affordable' : '');
+            const onclick   = soldOut ? '' : 'openRedeemPanel(\'' + r.id + '\')';
+            return '<div class="reward-card ' + cls + '" onclick="' + onclick + '">' +
+                '<span class="reward-soldout-badge">Habis</span>' +
+                '<span class="reward-icon">' + r.icon + '</span>' +
+                '<span class="reward-nama">' + r.nama + '</span>' +
+                '<span class="reward-poin">' + r.poin + ' poin</span>' +
+                '<span class="reward-stok">Stok: ' + r.stok + '</span>' +
+                '</div>';
+        }).join('');
+    }
+
+    // ── Redeem History ─────────────────────────────────────────
+    function renderRedeemHistory() {
+        const list = loadRedeemHistory().filter(function(h) { return h.operator === operator; });
+        const el   = document.getElementById('redeem-history-list');
+        if (!list.length) {
+            el.innerHTML = '<div style="padding:16px;text-align:center;font-size:13px;color:var(--muted);">Belum ada riwayat</div>';
+            return;
+        }
+        el.innerHTML = list.slice().reverse().map(function(h) {
+            return '<div class="redeem-row">' +
+                '<span class="redeem-icon">' + h.icon + '</span>' +
+                '<div class="redeem-info">' +
+                    '<div class="redeem-nama">' + h.nama + '</div>' +
+                    '<div class="redeem-time">' + h.waktu + '</div>' +
+                '</div>' +
+                '<span class="redeem-poin">-' + h.poin + ' poin</span>' +
+                '</div>';
+        }).join('');
+    }
+
+    // ── Panel Redeem ──────────────────────────────────────────
+    const redeemPanel   = document.getElementById('redeem-panel');
+    const redeemOverlay = document.getElementById('redeem-overlay');
+
+    function openRedeemPanel(rewardId) {
+        const r = REWARD_CATALOG.find(function(x) { return x.id === rewardId; });
+        if (!r) return;
+        if (currentPoin < r.poin) {
+            showToast('Poin tidak cukup untuk redeem ini', 'error');
+            return;
+        }
+        selectedReward = r;
+        document.getElementById('redeem-modal-icon').textContent  = r.icon;
+        document.getElementById('redeem-modal-nama').textContent  = r.nama;
+        document.getElementById('redeem-modal-poin').textContent  = r.poin + ' poin';
+        document.getElementById('redeem-modal-sisa').textContent  = (currentPoin - r.poin) + ' poin';
+        redeemPanel.classList.add('show');
+        redeemOverlay.classList.add('show');
+    }
+
+    function closeRedeemPanel() {
+        redeemPanel.classList.remove('show');
+        redeemOverlay.classList.remove('show');
+        selectedReward = null;
+    }
+
+    document.getElementById('btn-close-redeem').addEventListener('click', closeRedeemPanel);
+    document.getElementById('btn-batal-redeem').addEventListener('click', closeRedeemPanel);
+    redeemOverlay.addEventListener('click', closeRedeemPanel);
+
+    // ── Konfirmasi Redeem ─────────────────────────────────────
+    document.getElementById('btn-konfirmasi-redeem').addEventListener('click', async function() {
+        if (!selectedReward) return;
+        const r = selectedReward;
+        closeRedeemPanel();
+        setLoading(true, 'Memproses redeem...');
+
+        try {
+            const params = new URLSearchParams({
+                action:     'redeem',
+                key:        API_KEY,
+                operator:   operator,
+                rewardId:   r.id,
+                rewardNama: r.nama,
+                poinPotong: r.poin,
+            });
+            const res  = await fetch(LINK_GAS, {
+                method:  'POST',
+                body:    params,
+            });
+            const data = await res.json();
+            if (data.status !== 'success') throw new Error(data.message || 'Gagal redeem');
+
+            currentPoin = data.data.poinSisa;
+            document.getElementById('stat-poin').textContent = currentPoin;
+
+            const gamif = loadGamifCache();
+            gamif['poin_' + operator] = currentPoin;
+            saveGamifCache(gamif);
+
+            const history = loadRedeemHistory();
+            history.push({
+                operator: operator,
+                rewardId: r.id,
+                nama:     r.nama,
+                icon:     r.icon,
+                poin:     r.poin,
+                waktu:    new Date().toLocaleString('id-ID', {
+                    day:'2-digit', month:'short', year:'numeric',
+                    hour:'2-digit', minute:'2-digit'
+                }),
+            });
+            saveRedeemHistory(history);
+
+            renderRewardGrid();
+            renderRedeemHistory();
+
+            const msg = encodeURIComponent(
+                '[Packify Redeem]\n' +
+                'Operator: ' + operator + '\n' +
+                'Reward: ' + r.icon + ' ' + r.nama + '\n' +
+                'Poin dipotong: ' + r.poin + '\n' +
+                'Sisa poin: ' + currentPoin + '\n\n' +
+                'Mohon konfirmasi ya!'
+            );
+            window.open('https://wa.me/' + OWNER_WA + '?text=' + msg, '_blank');
+
+            showToast('Redeem ' + r.nama + ' berhasil!', 'success');
+
+        } catch (err) {
+            showToast('Gagal redeem: ' + err.message, 'error');
+        } finally {
+            setLoading(false);
+        }
+    });
+
+    // ── Dark Mode Toggle ──────────────────────────────────────
+    const btnTheme = document.getElementById('btn-theme');
+
+    function syncThemeIcon() {
+        const icon = document.getElementById('theme-icon');
+        if (getTheme() === 'dark') {
+        } else {
+            document.getElementById('theme-icon').outerHTML =
+                '<i class="bi bi-moon-fill" style="font-size:18px;" id="theme-icon"></i>';
+        }
+    }
+
+    btnTheme.addEventListener('click', () => {
+        toggleTheme();
+        // Re-render icon setelah toggle
+        const isDark = getTheme() === 'dark';
+        btnTheme.innerHTML = isDark
+            ? '<i class="bi bi-sun-fill" style="font-size:18px;"></i>'
+            : '<i class="bi bi-moon-fill" style="font-size:18px;"></i>';
+    });
+
+    // Set icon awal
+    btnTheme.innerHTML = getTheme() === 'dark'
+        ? '<i class="bi bi-sun-fill" style="font-size:18px;"></i>'
+        : '<i class="bi bi-moon-fill" style="font-size:18px;"></i>';
+
+    // ── Logout ────────────────────────────────────────────────
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        if (!confirm('Keluar dari Packify? Kamu perlu login ulang.')) return;
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem(OPERATOR_KEY);
+        window.location.replace('login.html');
+    });
+
+    // ── Init ──────────────────────────────────────────────────
+    loadProfile();
+
+    </script>
+</body>
+</html>

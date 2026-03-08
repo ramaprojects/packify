@@ -8,14 +8,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
     <header class="app-header">
         <button class="btn-back" onclick="navigateTo('index.html')">←</button>
         <h6>History</h6>
         <button id="btn-wa" title="Kirim laporan WhatsApp"
-            style="background:none;border:none;font-size:22px;cursor:pointer;padding:4px;">📤</button>
+            style="width:36px;height:36px;background:none;border:none;cursor:pointer;
+                   display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="bi bi-send-fill" style="font-size:18px;color:var(--accent);"></i>
+        </button>
     </header>
 
     <div class="page-content page-transition-wrap" style="padding-top:8px;">
@@ -24,7 +26,7 @@
         <div id="sync-banner" class="d-none"
             style="background:var(--red-lt);border:1px solid #f5c6cb;border-radius:var(--radius);
                    padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
-            <span style="font-size:20px;">⚠️</span>
+            <i class="bi bi-exclamation-triangle-fill" style="font-size:22px;color:var(--red);flex-shrink:0;"></i>
             <div style="flex:1;">
                 <div style="font-weight:600;font-size:13px;color:var(--red);" id="sync-banner-text">
                     Beberapa sesi gagal sync
@@ -42,7 +44,7 @@
         <!-- Search & Filter -->
         <div style="display:flex;gap:8px;margin-bottom:12px;">
             <input type="text" class="form-control" id="input-search"
-                placeholder="🔍  Cari penerima atau resi..." style="flex:1;" />
+                placeholder="Cari penerima atau resi..." style="flex:1;" />
             <select class="form-select" id="filter-status" style="width:auto;flex-shrink:0;">
                 <option value="">Semua</option>
                 <option value="PENDING_RESI">Belum Resi</option>
@@ -120,6 +122,50 @@
     <!-- Toast -->
     <div class="toast-container" id="toast-container"></div>
 
+    <!-- Panel: Generate Laporan WA -->
+    <div class="panel-overlay" id="wa-overlay"></div>
+    <div class="bottom-panel" id="wa-panel">
+        <div class="panel-handle"></div>
+        <div class="panel-header">
+            <div class="panel-title">Generate Laporan WA</div>
+            <button class="btn-close-panel" id="btn-close-wa">✕</button>
+        </div>
+        <div class="panel-body">
+            <!-- Anggota hadir -->
+            <div class="form-group" style="margin-bottom:12px;">
+                <label class="form-label">Anggota hadir <span style="color:var(--muted);font-weight:400;">(pisah koma)</span></label>
+                <input type="text" class="form-control" id="wa-anggota"
+                    placeholder="Wulan, Rama" />
+            </div>
+            <!-- Stay laptop -->
+            <div class="form-group" style="margin-bottom:12px;">
+                <label class="form-label">Stay Laptop</label>
+                <select class="form-control" id="wa-stay">
+                    <option value="">— Pilih operator —</option>
+                </select>
+            </div>
+            <!-- Pendaftaran -->
+            <div class="form-group" style="margin-bottom:20px;">
+                <label class="form-label">Pendaftaran <span style="color:var(--muted);font-weight:400;">(satu per baris, kosongkan jika tidak ada)</span></label>
+                <textarea class="form-control" id="wa-pendaftaran" rows="3"
+                    placeholder="Nama toko&#10;Nama merchant" style="resize:none;"></textarea>
+            </div>
+
+            <!-- Preview ringkasan -->
+            <div id="wa-preview" style="background:var(--paper);border-radius:var(--radius);
+                padding:14px;margin-bottom:20px;font-size:12px;line-height:1.7;
+                font-family:'DM Mono',monospace;color:var(--ink);white-space:pre-wrap;
+                max-height:220px;overflow-y:auto;border:1.5px solid var(--border);">
+                Isi anggota hadir untuk preview...
+            </div>
+
+            <button class="btn btn-primary btn-full btn-lg" id="btn-kirim-wa"
+                style="gap:8px;">
+                <i class="bi bi-whatsapp"></i> Buka WhatsApp
+            </button>
+        </div>
+    </div>
+
     <!-- Bottom Nav -->
     <nav id="bottom-nav-root"></nav>
 
@@ -173,7 +219,7 @@
         if (!sessions.length) {
             container.innerHTML = `
                 <div class="empty-state">
-                    <div class="empty-icon">📭</div>
+                    <i class="bi bi-tray" style="font-size:40px;margin-bottom:4px;color:var(--muted);"></i>
                     <div class="empty-text">Tidak ada sesi</div>
                     <div class="empty-sub">Coba ubah filter atau mulai sesi baru</div>
                 </div>`;
@@ -205,7 +251,7 @@
                         <div style="flex:1;">
                             <span class="date-group-label" style="padding:0;margin:0;">${label}</span>
                             <span style="font-size:11px;color:var(--muted);margin-left:8px;">
-                                ${items.length} sesi · ✅ ${doneCount} · ⭐ ${totalPoin}
+                                ${items.length} sesi · ${doneCount} selesai · ${totalPoin} poin
                             </span>
                         </div>
                         <span class="date-group-chevron">${isOpen ? '▲' : '▼'}</span>
@@ -216,21 +262,23 @@
                             const id    = getSessionID(s);
                             return `
                                 <div class="history-item" data-id="${id}" style="cursor:pointer;margin-bottom:6px;">
-                                    <div style="font-size:22px;flex-shrink:0;">
-                                        ${['DONE','SYNCED'].includes(getStatus(s)) ? '✅' : '📦'}
+                                    <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;width:32px;">
+                                        ${['DONE','SYNCED'].includes(getStatus(s))
+                                            ? '<i class="bi bi-check-circle-fill" style="font-size:24px;color:var(--accent);"></i>'
+                                            : '<i class="bi bi-box-seam" style="font-size:24px;color:var(--muted);"></i>'}
                                     </div>
                                     <div class="history-item-info">
                                         <div class="history-item-name">${getPenerima(s)}</div>
                                         <div class="history-item-sub">
                                             ${getJenis(s)} · ${getPlatform(s)} · ${getPetugas(s)}
-                                            · 🕐 ${formatTime(getWaktuDibuat(s))}
+                                            · ${formatTime(getWaktuDibuat(s))}
                                         </div>
                                     </div>
                                     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
                                         <span class="badge ${badge.cls}">${badge.label}</span>
-                                        <span class="poin-chip">⭐ ${getPoin(s)}</span>
+                                        <span class="poin-chip"><i class="bi bi-star-fill" style="font-size:11px;"></i> ${getPoin(s)}</span>
                                         ${s.syncStatus === 'FAILED'
-                                            ? `<span class="badge badge-red" style="font-size:10px;">⚠️ Gagal sync</span>`
+                                            ? `<span class="badge badge-red" style="font-size:10px;"><i class="bi bi-exclamation-triangle-fill" style="font-size:10px;"></i> Gagal sync</span>`
                                             : ''}
                                     </div>
                                 </div>`;
@@ -262,7 +310,7 @@
         document.getElementById('modal-jenis').textContent        = getJenis(session);
         document.getElementById('modal-platform').textContent     = getPlatform(session);
         document.getElementById('modal-operator').textContent     = getPetugas(session);
-        document.getElementById('modal-poin').textContent         = `⭐ ${getPoin(session)} poin`;
+        document.getElementById('modal-poin').textContent = `${getPoin(session)} poin`;
         document.getElementById('modal-resi-number').textContent  = getNomorResi(session);
 
         const waktuDibuat  = getWaktuDibuat(session);
@@ -334,44 +382,172 @@
     });
 
     // ── WhatsApp Report ───────────────────────────────────────
-    document.getElementById('btn-wa').addEventListener('click', () => {
+    const WA_GRUP = '6281234567890'; // ← ganti dengan nomor WA grup tim
+
+    function getTodaySessions() {
         const today      = getTodayKey();
         const todayStart = new Date(today + 'T00:00:00');
+        return {
+            edc:      allSessions.filter(s => {
+                          const fin = getWaktuSelesai(s);
+                          const jenis = getJenis(s) || '';
+                          return ['DONE','SYNCED'].includes(getStatus(s)) && fin
+                              && (parseDate(fin) || 0) >= todayStart
+                              && ['T1','T3','M3','Saku','Retur'].includes(jenis);
+                      }),
+            ecommerce: allSessions.filter(s => {
+                          const fin = getWaktuSelesai(s);
+                          const jenis = getJenis(s) || '';
+                          return ['DONE','SYNCED'].includes(getStatus(s)) && fin
+                              && (parseDate(fin) || 0) >= todayStart
+                              && ['Thermal','Kaos'].includes(jenis);
+                      }),
+        };
+    }
 
-        const done = allSessions.filter(s => {
-            const fin = getWaktuSelesai(s);
-            return ['DONE','SYNCED'].includes(getStatus(s)) && fin && (parseDate(fin) || 0) >= todayStart;
-        });
+    function generateLaporan(anggota, stay, pendaftaran) {
+        const today   = getTodayKey();
+        const { edc, ecommerce } = getTodaySessions();
 
-        const pending = allSessions.filter(s => getStatus(s) === STATUS.PENDING_RESI);
+        // Format tanggal Indonesia
+        const tgl = new Date(today + 'T00:00:00')
+            .toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
-        const totalPoin = done.reduce((sum, s) => sum + (getPoin(s) || 0), 0);
+        const lines = [];
 
-        const lines = [
-            `📦 *Laporan Packing — ${formatDate(today + 'T00:00:00')}*`,
-            ``,
-            `✅ Selesai hari ini: *${done.length} sesi* (${totalPoin} poin)`,
-            `⏳ Menunggu resi: *${pending.length} sesi*`,
-            ``,
-        ];
+        // Header
+        lines.push(`🧑🏻‍🔧👩🏻‍🔧 *[REPORTING TIM SUPPORT EDC]*`);
+        lines.push(`Tanggal : ${tgl}`);
+        lines.push(`Anggota : ${anggota || '-'}`);
+        lines.push(`Stay Laptop : ${stay || '-'}`);
+        // Pendaftaran — split per baris
+        const daftarList = pendaftaran
+            ? pendaftaran.split('\n').map(s => s.trim()).filter(Boolean)
+            : [];
+        lines.push(`Pendaftaran : ${daftarList.length || '-'}`);
+        if (daftarList.length) daftarList.forEach(n => lines.push(n));
+        lines.push(``);
 
-        if (done.length) {
-            lines.push(`*Detail Selesai:*`);
-            done.forEach((s, i) => {
-                lines.push(`${i+1}. ${getPenerima(s)} — ${getJenis(s)} (${getPetugas(s)})`);
+        // Packing EDC
+        lines.push(`Packing EDC : ${edc.length}`);
+        if (edc.length) {
+            edc.forEach(s => lines.push(getPenerima(s)));
+        } else {
+            lines.push(`-`);
+        }
+        lines.push(``);
+
+        // Packing Ecommerce
+        lines.push(`Packing Selain EDC :`);
+        lines.push(`Pesanan Ecommerce : ${ecommerce.length}`);
+        if (ecommerce.length) {
+            ecommerce.forEach(s => {
+                const jenis    = getJenis(s) || '-';
+                const platform = getPlatform(s) || '-';
+                lines.push(`${jenis.toUpperCase()} - ${platform.toUpperCase()}`);
             });
-            lines.push('');
+        } else {
+            lines.push(`-`);
+        }
+        lines.push(``);
+
+        // Stok asset — ambil dari cache lokal
+        const stok = loadStokCache();
+        if (stok && stok.length) {
+            lines.push(`📁 *UPDATE STOCK ASSET*`);
+            stok.forEach(item => {
+                const val     = formatStokWA(item);
+                const warning = item.stok <= item.threshold ? ' ⚠️' : '';
+                lines.push(`- ${item.nama}: ${val}${warning}`);
+            });
+            if (stok.some(i => i.stok <= i.threshold)) {
+                lines.push(``);
+                lines.push(`*note: tanda "⚠️" berarti stok menipis`);
+            }
         }
 
-        if (pending.length) {
-            lines.push(`*Belum Ada Resi:*`);
-            pending.forEach((s, i) => {
-                lines.push(`${i+1}. ${getPenerima(s)} — ${getJenis(s)}`);
-            });
+        return lines.join('\n');
+    }
+
+    function formatStokWA(item) {
+        if (item.id === 'thermal') {
+            const pcs  = item.stok;
+            const pack = Math.floor(pcs / 10);
+            const sisa = pcs % 10;
+            if (pack >= 10) {
+                const box = Math.floor(pack / 10);
+                const sp  = pack % 10;
+                return box + ' box' + (sp ? ' ' + sp + ' pack' : '') + (sisa ? ' ' + sisa + ' pcs' : '');
+            }
+            return pack > 0 ? pack + ' pack' + (sisa ? ' ' + sisa + ' pcs' : '') : pcs + ' pcs';
+        }
+        return item.stok + ' ' + item.satuan;
+    }
+
+    // Cache stok di localStorage supaya history.html bisa akses tanpa fetch ulang
+    const STOK_CACHE_KEY = 'packify_stok_cache';
+    function loadStokCache() {
+        try { return JSON.parse(localStorage.getItem(STOK_CACHE_KEY)) || null; }
+        catch { return null; }
+    }
+    function saveStokCache(data) {
+        localStorage.setItem(STOK_CACHE_KEY, JSON.stringify(data));
+    }
+
+    async function fetchStokForReport() {
+        try {
+            const res  = await fetch(`${LINK_GAS}?action=get_stock&key=${API_KEY}`, { redirect: 'follow' });
+            const data = await res.json();
+            if (data.status === 'success') saveStokCache(data.data);
+        } catch(e) { /* pakai cache lama kalau gagal */ }
+    }
+
+    // ── Panel WA ─────────────────────────────────────────────
+    function openWaPanel() {
+        // Default anggota — nama lengkap semua operator
+        const anggotaEl = document.getElementById('wa-anggota');
+        if (!anggotaEl.value) {
+            anggotaEl.value = OPERATORS.map(op => OPERATOR_NAMES[op] || op).join(', ');
         }
 
-        const msg = encodeURIComponent(lines.join('\n'));
-        window.open(`https://wa.me/?text=${msg}`, '_blank');
+        // Populate dropdown stay laptop pakai nama lengkap
+        const stayEl = document.getElementById('wa-stay');
+        stayEl.innerHTML = '<option value="">— Pilih operator —</option>' +
+            OPERATORS.map(op =>
+                `<option value="${OPERATOR_NAMES[op] || op}">${OPERATOR_NAMES[op] || op}</option>`
+            ).join('');
+
+        document.getElementById('wa-panel').classList.add('show');
+        document.getElementById('wa-overlay').classList.add('show');
+        updateWaPreview();
+    }
+    function closeWaPanel() {
+        document.getElementById('wa-panel').classList.remove('show');
+        document.getElementById('wa-overlay').classList.remove('show');
+    }
+
+    function updateWaPreview() {
+        const anggota     = document.getElementById('wa-anggota').value.trim();
+        const stay        = document.getElementById('wa-stay').value.trim();
+        const pendaftaran = document.getElementById('wa-pendaftaran').value.trim();
+        document.getElementById('wa-preview').textContent = generateLaporan(anggota, stay, pendaftaran);
+    }
+
+    document.getElementById('btn-wa').addEventListener('click', openWaPanel);
+    document.getElementById('btn-close-wa').addEventListener('click', closeWaPanel);
+    document.getElementById('wa-overlay').addEventListener('click', closeWaPanel);
+    document.getElementById('wa-anggota').addEventListener('input', updateWaPreview);
+    document.getElementById('wa-stay').addEventListener('change', updateWaPreview);
+    document.getElementById('wa-pendaftaran').addEventListener('input', updateWaPreview);
+
+    document.getElementById('btn-kirim-wa').addEventListener('click', () => {
+        const anggota     = document.getElementById('wa-anggota').value.trim();
+        const stay        = document.getElementById('wa-stay').value.trim();
+        const pendaftaran = document.getElementById('wa-pendaftaran').value.trim();
+        const msg         = generateLaporan(anggota, stay, pendaftaran);
+        const url         = `https://wa.me/${WA_GRUP}?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
+        closeWaPanel();
     });
 
     // ── Filter & Search ───────────────────────────────────────
@@ -453,6 +629,7 @@
     updateSyncBanner();
     renderList();
     fetchFromServer();
+    fetchStokForReport(); // cache stok untuk laporan WA
     </script>
 
 </body>

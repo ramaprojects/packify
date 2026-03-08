@@ -6,11 +6,42 @@
 // ─── KONFIGURASI ───────────────────────────
 const LINK_GAS         = 'https://script.google.com/macros/s/AKfycbykbWDanoqMz4ElDYWommSN-XFO0iDQTZZ4m-0fH7tUgic4KA6HMUoQAH_fAaX3Xg69/exec';
 const API_KEY          = '09a638642848807261eca8fd3004a277dc01d2bffbf9a25f';
+const WA_GRUP_NUMBER   = '6281234567890'; // ← ganti nomor WA grup tim
+
+// Nama lengkap per operator — dipakai di laporan WA & dropdown
+const OPERATOR_NAMES = {
+    ram: 'Rama',
+    nab: 'Nabilah',
+    wul: 'Wulan',
+};
 const STORAGE_KEY      = 'packify_sessions';
 const CURRENT_KEY      = 'packify_current';
 const OPERATOR_KEY     = 'packify_operator';
 const GAMIF_KEY        = 'packify_gamifikasi'; // cache lokal gamifikasi
 const SYNC_QUEUE_KEY   = 'packify_sync_queue';  // antrian sesi yang gagal sync
+const THEME_KEY        = 'packify_theme';
+
+// ─── DARK MODE ──────────────────────────────────────────────
+// Jalankan SEGERA agar tidak ada flash of light saat dark mode aktif
+(function applyTheme() {
+    const saved = localStorage.getItem(THEME_KEY) || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+})();
+
+function getTheme() {
+    return localStorage.getItem(THEME_KEY) || 'light';
+}
+
+function setTheme(theme) {
+    localStorage.setItem(THEME_KEY, theme);
+    document.documentElement.setAttribute('data-theme', theme);
+}
+
+function toggleTheme() {
+    const next = getTheme() === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    return next;
+}
 
 // ─── SYNC QUEUE HELPERS ─────────────────────
 function loadSyncQueue() {
@@ -46,38 +77,109 @@ const POIN_MAP = {
 
 const OPERATORS = ['ram', 'nab', 'wul'];
 
+// ─── REDEEM CONFIG ────────────────────────
+const ADMIN_PIN = '1234'; // ganti PIN admin
+
+const OWNER_WA = '6281234567890'; // ganti dengan nomor WA owner
+
+const REWARD_CATALOG = [
+    { id: 'batagor',    nama: 'Batagor',       icon: '🥟', poin: 50,  stok: 5 },
+    { id: 'tahu_kocek', nama: 'Tahu Kocek',    icon: '🧆', poin: 40,  stok: 5 },
+    { id: 'cilok',      nama: 'Cilok',          icon: '🍡', poin: 30,  stok: 5 },
+    { id: 'cireng',     nama: 'Cireng',         icon: '🫓', poin: 25,  stok: 5 },
+];
+
+
 // ─── STATUS ────────────────────────────────
 const STATUS = {
     PENDING_RESI: 'PENDING_RESI',
     DONE:         'DONE',
 };
 
+// ─── STOCK DEDUCTIONS PER JENIS PACKING ────
+// Satuan thermal dalam pcs (1 pack = 10pcs, 1 box = 100pcs)
+const STOCK_DEDUCTIONS = {
+    'T1':      [
+        { item_id: 'softbox_t1',   jumlah: 1 },
+        { item_id: 'hardbox_t1t3', jumlah: 1 },
+        { item_id: 'sertifikat',   jumlah: 1 },
+        { item_id: 'label',        jumlah: 1 },
+        { item_id: 'panduan_t1t3', jumlah: 1 },
+        { item_id: 'kaos',         jumlah: 1 },
+        { item_id: 'thermal',      jumlah: 3 },
+    ],
+    'T3':      [
+        { item_id: 'softbox_t3',   jumlah: 1 },
+        { item_id: 'hardbox_t1t3', jumlah: 1 },
+        { item_id: 'sertifikat',   jumlah: 1 },
+        { item_id: 'label',        jumlah: 1 },
+        { item_id: 'panduan_t1t3', jumlah: 1 },
+        { item_id: 'kaos',         jumlah: 1 },
+        { item_id: 'thermal',      jumlah: 3 },
+    ],
+    'M3':      [
+        { item_id: 'softbox_saku', jumlah: 1 },
+        { item_id: 'hardbox_saku', jumlah: 1 },
+        { item_id: 'sertifikat',   jumlah: 1 },
+        { item_id: 'label',        jumlah: 1 },
+        { item_id: 'thermal',      jumlah: 3 },
+    ],
+    'Saku':    [
+        { item_id: 'softbox_saku', jumlah: 1 },
+        { item_id: 'hardbox_saku', jumlah: 1 },
+        { item_id: 'sertifikat',   jumlah: 1 },
+        { item_id: 'label',        jumlah: 1 },
+        { item_id: 'thermal',      jumlah: 3 },
+    ],
+    'Thermal': [
+        { item_id: 'thermal',      jumlah: 10 }, // 1 pack = 10 pcs
+    ],
+    'Retur':   [
+        { item_id: 'hardbox_retur', jumlah: 1 },
+    ],
+};
+
+// Kirim deduction ke GAS — dipanggil setelah sesi selesai disimpan
+async function deductStockAfterPacking(jenis) {
+    const deductions = STOCK_DEDUCTIONS[jenis];
+    if (!deductions || !deductions.length) return;
+    try {
+        await fetch(`${LINK_GAS}?action=deduct_stock&key=${API_KEY}`, {
+            method: 'POST', redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ deductions }),
+        });
+    } catch (e) {
+        console.warn('Deduct stock gagal (non-fatal):', e);
+    }
+}
+
 // ─── BADGE DEFINITIONS ─────────────────────
 const BADGES = [
     {
         id:    'first_pack',
-        icon:  '🎯',
+        icon:  'bi bi-bullseye',
         label: 'Packing Pertama',
         desc:  'Selesaikan sesi packing pertamamu',
         check: (stats) => stats.totalDone >= 1,
     },
     {
         id:    'streak_7',
-        icon:  '🔥',
+        icon:  'bi bi-fire',
         label: 'On Fire',
         desc:  'Streak 7 hari berturut-turut',
         check: (stats) => stats.streak >= 7,
     },
     {
         id:    'veteran',
-        icon:  '📦',
+        icon:  'bi bi-box-seam-fill',
         label: 'Veteran',
         desc:  '50 total packing selesai',
         check: (stats) => stats.totalDone >= 50,
     },
     {
         id:    'top_packer',
-        icon:  '👑',
+        icon:  'bi bi-trophy-fill',
         label: 'Top Packer',
         desc:  'Raih #1 leaderboard mingguan',
         check: (stats) => stats.isTopWeekly === true,
@@ -154,7 +256,38 @@ function loadAllSessions() {
 }
 
 function saveAllSessions(sessions) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    } catch (err) {
+        if (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+            console.warn('localStorage penuh, pruning sesi lama...');
+            const pruned = pruneOldSessions(sessions);
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(pruned));
+                console.log('Pruning berhasil: ' + (sessions.length - pruned.length) + ' sesi lama dihapus dari cache lokal.');
+            } catch (err2) {
+                console.error('Masih gagal setelah pruning:', err2);
+            }
+        } else {
+            console.error('Gagal simpan sesi:', err);
+        }
+    }
+}
+
+// Hapus sesi DONE/SYNCED > 30 hari dari localStorage
+// Data di Google Sheets tidak tersentuh sama sekali
+function pruneOldSessions(sessions, daysOld = 30) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - daysOld);
+
+    return sessions.filter(s => {
+        if (!['DONE', 'SYNCED'].includes(getStatus(s))) return true;
+        if (s.syncStatus !== 'SYNCED') return true;
+        const fin = getWaktuSelesai(s);
+        if (!fin) return true;
+        const finDate = parseDate(fin);
+        return finDate && finDate >= cutoff;
+    });
 }
 
 function loadCurrentSession() {
@@ -521,14 +654,10 @@ async function retrySyncQueue(onProgress) {
 
 // ─── DETECT KURIR ──────────────────────────
 const KURIR_PATTERNS = [
-    // J&T Cargo — cek duluan sebelum J&T biasa karena prefix JC spesifik
-    { name: 'J&T Cargo',   icon: '🚛', pattern: /^JC\d{8,12}$/i },
-    // SiCepat
-    { name: 'SiCepat',     icon: '⚡', pattern: /^(SC|00)\d{10,14}$/i },
-    // J&T Express
-    { name: 'J&T Express', icon: '🟡', pattern: /^JP\d{8,12}$/i },
-    // JNE — 15 digit angka murni
-    { name: 'JNE',         icon: '🔴', pattern: /^\d{15}$/ },
+    { name: 'J&T Cargo',   icon: 'bi bi-truck',         pattern: /^JC\d{8,12}$/i },
+    { name: 'SiCepat',     icon: 'bi bi-lightning-fill',      pattern: /^(SC|00)\d{10,14}$/i },
+    { name: 'J&T Express', icon: 'bi bi-box-seam-fill',        pattern: /^JP\d{8,12}$/i },
+    { name: 'JNE',         icon: 'bi bi-geo-alt-fill',        pattern: /^\d{15}$/ },
 ];
 
 function detectKurir(nomorResi) {
@@ -581,18 +710,27 @@ function setLoading(show, text = 'Memproses...') {
     const active = (name) => page === name ? 'active' : '';
     root.className = 'bottom-nav';
     root.innerHTML = [
+        // Dashboard
         `<button class="nav-item ${active('index.html')}" data-nav="dashboard">`,
-        `    <span class="nav-icon">&#127968;</span><span>Dashboard</span>`,
+        `    <i class="bi bi-house-fill nav-icon"></i><span>Dashboard</span>`,
         `</button>`,
-        `<button class="nav-item ${active('checklist.html')}" data-nav="checklist">`,
-        `    <span class="nav-icon">&#9989;</span><span>Checklist</span>`,
+        // History
+        `<button class="nav-item ${active('history.html')}" data-nav="history">`,
+        `    <i class="bi bi-clock-history nav-icon"></i><span>History</span>`,
         `</button>`,
+        // Checklist — FAB tengah
+        `<button class="nav-item nav-fab ${active('checklist.html')}" data-nav="checklist">`,
+        `    <span class="nav-fab-circle"><i class="bi bi-check2-square nav-icon" style="color:#fff;"></i></span>`,
+        `    <span>Checklist</span>`,
+        `</button>`,
+        // Resi
         `<button class="nav-item ${active('resi.html')}" data-nav="resi" style="position:relative;">`,
-        `    <span class="nav-icon">&#128666;</span><span>Resi</span>`,
+        `    <i class="bi bi-upc-scan nav-icon"></i><span>Resi</span>`,
         `    <span id="resi-badge-nav" class="nav-badge d-none">0</span>`,
         `</button>`,
-        `<button class="nav-item ${active('history.html')}" data-nav="history">`,
-        `    <span class="nav-icon">&#128336;</span><span>History</span>`,
+        // Profil
+        `<button class="nav-item ${active('profile.html')}" data-nav="profile">`,
+        `    <i class="bi bi-person-fill nav-icon"></i><span>Profil</span>`,
         `</button>`,
     ].join('');
 })();
@@ -612,6 +750,7 @@ document.addEventListener('click', e => {
         checklist: 'checklist.html',
         resi:      'resi.html',
         history:   'history.html',
+        profile:   'profile.html',
     };
     if (map[btn.dataset.nav]) navigateTo(map[btn.dataset.nav]);
 });
